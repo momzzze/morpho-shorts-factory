@@ -60,7 +60,7 @@ The philosophy is simple:
 ### Backend (Node.js – core system)
 
 - **API**: Express
-- **Workers**: BullMQ consumers
+- **Workers**: RabbitMQ consumers
 - **Video processing**: FFmpeg
 - **Database**: PostgreSQL + Prisma
 - **Queue**: Redis + BullMQ
