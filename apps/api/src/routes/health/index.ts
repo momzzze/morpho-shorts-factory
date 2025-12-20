@@ -1,6 +1,6 @@
 import { Router } from 'express';
-import { asyncHandler } from '../../asyncHandler';
-import { logger } from '../../logger';
+import { asyncHandler } from '../../asyncHandler.js';
+import { logger } from '../../logger.js';
 
 export const healthRouter = Router();
 

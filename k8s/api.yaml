@@ -1,0 +1,200 @@
+# ==============================================================================
+# Morpho API Kubernetes Configuration
+# ==============================================================================
+# This file defines the Kubernetes resources for the Morpho API service
+#
+# USAGE COMMANDS:
+# - Apply configuration:     kubectl apply -f k8s/api.yaml
+# - Delete resources:        kubectl delete -f k8s/api.yaml
+# - View deployment status:  kubectl get deployments
+# - View pods:               kubectl get pods
+# - View services:           kubectl get services
+# - Check pod logs:          kubectl logs -f deployment/morpho-api
+# - Describe deployment:     kubectl describe deployment morpho-api
+# - Exec into pod:           kubectl exec -it deployment/morpho-api -- sh
+# ==============================================================================
+
+---
+# ConfigMap: Stores non-sensitive configuration data
+# Used for environment variables that don't need to be secret
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: morpho-api-config
+  labels:
+    app: morpho-api
+data:
+  PORT: '5001'
+  NODE_ENV: 'production'
+  # CORS origins - comma separated list of allowed origins
+  CORS_ORIGINS: 'http://localhost:5173,http://localhost:3000'
+
+---
+# Secret: Stores sensitive configuration data (base64 encoded)
+# Create this with: kubectl create secret generic morpho-api-secrets \
+#   --from-literal=DATABASE_URL='postgresql://user:pass@host:5432/db' \
+#   --from-literal=SESSION_SECRET='your-secret-here' \
+#   --from-literal=API_KEY='your-api-key-here'
+#
+# Or apply this YAML after encoding values with: echo -n "value" | base64
+apiVersion: v1
+kind: Secret
+metadata:
+  name: morpho-api-secrets
+  labels:
+    app: morpho-api
+type: Opaque
+data:
+  # Base64 encoded secrets - REPLACE THESE WITH YOUR ACTUAL VALUES
+  # To encode: echo -n "your-value" | base64
+  DATABASE_URL: cG9zdGdyZXNxbDovL3Bvc3RncmVzOnBvc3RncmVzQGxvY2FsaG9zdDo1NDMyL21vcnBob19zaG9ydHNfZmFjdG9yeV9kZXY=
+  SESSION_SECRET: NThTNXFQSFR4dUpMQ3A5ZWZZd3FGTGJ6cWRERjRiaENuMzFxUEk0TFFhQT0=
+  API_KEY: eW91cl9hcGlfa2V5X2hlcmU=
+
+---
+# Deployment: Manages the API application pods
+# Defines how many replicas to run and how to deploy updates
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: morpho-api
+  labels:
+    app: morpho-api
+    component: backend
+spec:
+  # Number of pod replicas to run (horizontal scaling)
+  replicas: 2
+
+  # Selector to identify which pods belong to this deployment
+  selector:
+    matchLabels:
+      app: morpho-api
+
+  # Rolling update strategy - zero downtime deployments
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1 # Max number of pods above desired count during update
+      maxUnavailable: 0 # Max number of pods unavailable during update
+
+  # Pod template - defines the actual container specifications
+  template:
+    metadata:
+      labels:
+        app: morpho-api
+        component: backend
+    spec:
+      containers:
+        - name: api
+          # Docker image to use (imported with: k3d image import morpho-api:latest -c morpho)
+          image: morpho-api:latest
+          imagePullPolicy: Never # Use local image, don't try to pull from registry
+
+          # Container port - must match the PORT env variable
+          ports:
+            - containerPort: 5001
+              name: http
+              protocol: TCP
+
+          # Environment variables from ConfigMap (non-sensitive)
+          envFrom:
+            - configMapRef:
+                name: morpho-api-config
+
+          # Environment variables from Secret (sensitive data)
+          env:
+            - name: DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: morpho-api-secrets
+                  key: DATABASE_URL
+            - name: SESSION_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: morpho-api-secrets
+                  key: SESSION_SECRET
+            - name: API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: morpho-api-secrets
+                  key: API_KEY
+
+          # Resource limits - prevents pod from consuming too much CPU/memory
+          resources:
+            requests:
+              memory: '128Mi' # Minimum memory guaranteed
+              cpu: '100m' # Minimum CPU guaranteed (100 millicores = 0.1 CPU)
+            limits:
+              memory: '512Mi' # Maximum memory allowed
+              cpu: '500m' # Maximum CPU allowed (500 millicores = 0.5 CPU)
+
+          # Liveness probe - checks if container is alive (restarts if fails)
+          livenessProbe:
+            httpGet:
+              path: /api/v1/health/live
+              port: 5001
+            initialDelaySeconds: 30 # Wait 30s before first check
+            periodSeconds: 10 # Check every 10s
+            timeoutSeconds: 5 # Request timeout
+            failureThreshold: 3 # Restart after 3 consecutive failures
+
+          # Readiness probe - checks if container is ready to receive traffic
+          readinessProbe:
+            httpGet:
+              path: /api/v1/health/ready
+              port: 5001
+            initialDelaySeconds: 10 # Wait 10s before first check
+            periodSeconds: 5 # Check every 5s
+            timeoutSeconds: 3 # Request timeout
+            failureThreshold: 2 # Mark unready after 2 consecutive failures
+
+---
+# Service: Exposes the API deployment within the cluster
+# Provides a stable endpoint for other services to communicate with the API
+apiVersion: v1
+kind: Service
+metadata:
+  name: morpho-api-service
+  labels:
+    app: morpho-api
+spec:
+  # Service type - ClusterIP makes it accessible only within cluster
+  # Change to LoadBalancer or NodePort for external access
+  type: ClusterIP
+
+  # Selector to route traffic to pods with matching labels
+  selector:
+    app: morpho-api
+
+  # Port configuration
+  ports:
+    - name: http
+      protocol: TCP
+      port: 80 # Service port (internal cluster access)
+      targetPort: 5001 # Container port (where the app listens)
+
+---
+# Optional: Ingress resource for external access via HTTP/HTTPS
+# Uncomment and configure if you want to expose the API externally
+#
+# apiVersion: networking.k8s.io/v1
+# kind: Ingress
+# metadata:
+#   name: morpho-api-ingress
+#   labels:
+#     app: morpho-api
+#   annotations:
+#     # Configure ingress controller specific settings here
+#     # nginx.ingress.kubernetes.io/rewrite-target: /
+# spec:
+#   rules:
+#   - host: api.morpho.local  # Your domain name
+#     http:
+#       paths:
+#       - path: /
+#         pathType: Prefix
+#         backend:
+#           service:
+#             name: morpho-api-service
+#             port:
+#               number: 80
