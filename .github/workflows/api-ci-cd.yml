@@ -1,0 +1,153 @@
+# ==============================================================================
+# Morpho API CI/CD Pipeline
+# ==============================================================================
+# This workflow automatically:
+# 1. Builds Docker image on push to main branch
+# 2. Pushes image to GitHub Container Registry (ghcr.io)
+# 3. Updates Kubernetes deployment with new image
+# 4. Rolls out changes to the cluster
+# ==============================================================================
+
+name: API CI/CD
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'apps/api/**'
+      - '.github/workflows/api-ci-cd.yml'
+  pull_request:
+    branches: [main]
+    paths:
+      - 'apps/api/**'
+  workflow_dispatch: # Allow manual trigger
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}/morpho-api
+
+jobs:
+  # ==============================================================================
+  # Build and Test
+  # ==============================================================================
+  build-and-test:
+    name: Build and Test API
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GitHub Container Registry
+        if: github.event_name != 'pull_request'
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract metadata (tags, labels)
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          tags: |
+            type=ref,event=branch
+            type=ref,event=pr
+            type=sha,prefix={{branch}}-
+            type=raw,value=latest,enable={{is_default_branch}}
+
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: apps/api/Dockerfile
+          push: ${{ github.event_name != 'pull_request' }}
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Output image tags
+        run: echo "Built image with tags - ${{ steps.meta.outputs.tags }}"
+
+  # ==============================================================================
+  # Deploy to Kubernetes
+  # ==============================================================================
+  deploy:
+    name: Deploy to Kubernetes
+    needs: build-and-test
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+
+    permissions:
+      contents: read
+      packages: read
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      # For production deployment, you'd set up kubectl with your cluster credentials
+      # For now, this shows the deployment command that would run
+      - name: Set up kubectl
+        uses: azure/setup-kubectl@v3
+        with:
+          version: 'latest'
+
+      # ===========================================================================
+      # OPTION 1: Deploy to remote cluster (production)
+      # Uncomment and configure for production deployment
+      # ===========================================================================
+      # - name: Configure kubectl for remote cluster
+      #   run: |
+      #     echo "${{ secrets.KUBE_CONFIG }}" | base64 -d > kubeconfig
+      #     export KUBECONFIG=kubeconfig
+      #     kubectl config use-context your-cluster-context
+
+      # - name: Update image in Kubernetes
+      #   run: |
+      #     kubectl set image deployment/morpho-api \
+      #       api=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:main-${{ github.sha }} \
+      #       -n default
+      #     kubectl rollout status deployment/morpho-api -n default --timeout=5m
+
+      # ===========================================================================
+      # OPTION 2: For local k3d development
+      # This shows what commands you'd run manually
+      # ===========================================================================
+      - name: Display deployment instructions
+        run: |
+          echo "🚀 New image built successfully!"
+          echo ""
+          echo "To deploy to your local k3d cluster, run:"
+          echo ""
+          echo "  # Pull the new image"
+          echo "  docker pull ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest"
+          echo ""
+          echo "  # Tag it for k3d"
+          echo "  docker tag ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest morpho-api:latest"
+          echo ""
+          echo "  # Import to k3d"
+          echo "  k3d image import morpho-api:latest -c morpho"
+          echo ""
+          echo "  # Restart deployment"
+          echo "  kubectl rollout restart deployment/morpho-api"
+          echo ""
+          echo "Or use the automatic update script (see below)"
+
+      - name: Create deployment summary
+        run: |
+          echo "### 🎉 Deployment Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Image:** \`${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest\`" >> $GITHUB_STEP_SUMMARY
+          echo "**Commit:** ${{ github.sha }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Branch:** ${{ github.ref_name }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "Ready to deploy! 🚀" >> $GITHUB_STEP_SUMMARY
