@@ -20,8 +20,8 @@ $GH_USER = "momzzze"
 $REPO = "morpho-shorts-factory"
 $IMAGE_NAME = "morpho-api"
 
-$REMOTE_IMAGE = "ghcr.io/$GH_USER/$REPO/$IMAGE_NAME:$ImageTag"
-$LOCAL_IMAGE = "$IMAGE_NAME:$ImageTag"
+$REMOTE_IMAGE = "ghcr.io/$GH_USER/$REPO/${IMAGE_NAME}:${ImageTag}"
+$LOCAL_IMAGE = "${IMAGE_NAME}:${ImageTag}"
 
 # Step 1: Pull latest image from GitHub Container Registry
 Write-Host "📥 Pulling image from GitHub Container Registry..." -ForegroundColor Yellow
