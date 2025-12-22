@@ -1,5 +1,4 @@
 import express from 'express';
-import dotenv from 'dotenv';
 import cors from 'cors';
 
 import { env } from './env.js';
@@ -8,8 +7,7 @@ import { httpLogger } from './httpLogger.js';
 import { logger } from './logger.js';
 import { requestIdMiddleware } from './middleware/requestId.js';
 import { isAppError } from './errors.js';
-
-dotenv.config();
+import { initializeRabbitMQ } from './rabbitmq/setup.js';
 
 const app = express();
 
@@ -74,6 +72,16 @@ app.use((err: any, req: any, res: any, _next: any) => {
   });
 });
 
-app.listen(env.PORT, () => {
+app.listen(env.PORT, async () => {
   logger.info({ port: env.PORT, env: env.NODE_ENV }, 'API server running');
+
+  // Initialize RabbitMQ and start consuming messages
+  try {
+    await initializeRabbitMQ();
+  } catch (error) {
+    logger.error(
+      { error },
+      'Failed to initialize RabbitMQ, continuing without it'
+    );
+  }
 });
