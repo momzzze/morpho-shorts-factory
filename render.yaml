@@ -1,0 +1,89 @@
+# ==============================================================================
+# Render.com Deployment Configuration
+# ==============================================================================
+# This file configures automatic deployment to Render.com
+# Just push to GitHub and Render will automatically deploy!
+#
+# Setup:
+# 1. Go to https://render.com
+# 2. Connect your GitHub repo
+# 3. Render will detect this file and create services automatically
+# ==============================================================================
+
+services:
+  # ============================================================================
+  # API Service - Express.js Backend
+  # ============================================================================
+  - type: web
+    name: morpho-api
+    env: docker
+    dockerfilePath: ./apps/api/Dockerfile
+    dockerContext: .
+    plan: starter # $7/month, or use 'free' for testing
+    region: oregon # Choose closest to your users
+
+    # Auto-deploy on every push to main
+    branch: main
+
+    # Environment variables
+    envVars:
+      - key: PORT
+        value: 5001
+      - key: NODE_ENV
+        value: production
+      - key: DATABASE_URL
+        fromDatabase:
+          name: morpho-db
+          property: connectionString
+      - key: SESSION_SECRET
+        generateValue: true # Auto-generates secure secret
+      - key: API_KEY
+        generateValue: true # Auto-generates secure API key
+      - key: RABBIT_URL
+        value: amqp://guest:guest@rabbitmq:5672 # Update with CloudAMQP URL
+      - key: CORS_ORIGINS
+        value: https://yourdomain.com,https://app.yourdomain.com
+
+    # Health check
+    healthCheckPath: /api/v1/health/ready
+
+    # Auto-deploy settings
+    autoDeploy: true
+
+  # ============================================================================
+  # RabbitMQ Service (Optional - use CloudAMQP instead for production)
+  # ============================================================================
+  # - type: pserv  # Private service (not exposed to internet)
+  #   name: rabbitmq
+  #   env: docker
+  #   dockerfilePath: ./k8s/rabbitmq.yaml
+  #   dockerContext: .
+  #   plan: starter
+
+# ============================================================================
+# Database - PostgreSQL
+# ============================================================================
+databases:
+  - name: morpho-db
+    databaseName: morpho
+    user: morpho
+    plan: starter # $7/month, includes backups
+    region: oregon
+# ============================================================================
+# Notes:
+# ============================================================================
+# 1. For RabbitMQ, use CloudAMQP free tier instead:
+#    https://www.cloudamqp.com/ (Free up to 1M messages/month)
+#    Update RABBIT_URL with CloudAMQP connection string
+#
+# 2. After first deploy, Render gives you a URL:
+#    https://morpho-api.onrender.com
+#
+# 3. Add custom domain in Render dashboard:
+#    Settings → Custom Domain → Add your domain
+#
+# 4. Total cost:
+#    - API: $7/month (or free for testing)
+#    - Database: $7/month (or free PostgreSQL tier)
+#    - RabbitMQ: Free (CloudAMQP)
+#    = $14/month total (or free for testing)

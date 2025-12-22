@@ -12,10 +12,12 @@ name: API CI/CD
 
 on:
   push:
-    branches: [main]
+    branches: [main, production] # Build on main (dev) and production branches
     paths:
       - 'apps/api/**'
       - '.github/workflows/api-ci-cd.yml'
+    tags:
+      - 'v*' # Build on version tags (v1.0.0, v1.1.0, etc.)
   pull_request:
     branches: [main]
     paths:
@@ -61,7 +63,11 @@ jobs:
             type=ref,event=branch
             type=ref,event=pr
             type=sha,prefix={{branch}}-
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
             type=raw,value=latest,enable={{is_default_branch}}
+            type=raw,value=dev,enable=${{ github.ref == 'refs/heads/main' }}
+            type=raw,value=prod,enable=${{ github.ref == 'refs/heads/production' }}
 
       - name: Build and push Docker image
         uses: docker/build-push-action@v5
@@ -151,3 +157,54 @@ jobs:
           echo "**Branch:** ${{ github.ref_name }}" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "Ready to deploy! 🚀" >> $GITHUB_STEP_SUMMARY
+
+  # ==============================================================================
+  # Deploy to Railway DEV (Auto)
+  # ==============================================================================
+  deploy-railway-dev:
+    name: Deploy to Railway DEV
+    needs: build-and-test
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Deploy to Railway DEV
+        uses: railwayapp/railway-deploy@v1
+        with:
+          railway_token: ${{ secrets.RAILWAY_TOKEN }}
+          service: morpho-api-dev
+
+      - name: Deployment Success
+        run: |
+          echo "🚀 Deployed to DEV environment"
+          echo "Check Railway dashboard: https://railway.app/project/${{ secrets.RAILWAY_PROJECT_ID }}"
+
+  # ==============================================================================
+  # Deploy to Railway PROD (Manual Approval Required)
+  # ==============================================================================
+  deploy-railway-prod:
+    name: Deploy to Railway PROD (Manual)
+    needs: build-and-test
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' && github.ref == 'refs/heads/production'
+    environment:
+      name: production
+      url: https://morpho-api-prod.up.railway.app
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Deploy to Railway PROD
+        uses: railwayapp/railway-deploy@v1
+        with:
+          railway_token: ${{ secrets.RAILWAY_TOKEN }}
+          service: morpho-api-prod
+
+      - name: Deployment Success
+        run: |
+          echo "🎉 Deployed to PRODUCTION environment"
+          echo "Check Railway dashboard: https://railway.app/project/${{ secrets.RAILWAY_PROJECT_ID }}"

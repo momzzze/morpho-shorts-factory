@@ -1,0 +1,94 @@
+# ==============================================================================
+# Production Ingress Configuration
+# ==============================================================================
+# This configures NGINX Ingress to route traffic to your API
+# and automatically provision SSL certificates
+# ==============================================================================
+
+---
+# SSL Certificate Issuer (Let's Encrypt)
+apiVersion: cert-manager.io/v1
+kind: ClusterIssuer
+metadata:
+  name: letsencrypt-prod
+spec:
+  acme:
+    # Let's Encrypt production server
+    server: https://acme-v02.api.letsencrypt.org/directory
+
+    # Your email for certificate expiration notifications
+    email: your-email@example.com # ⚠️ CHANGE THIS
+
+    # Secret to store the ACME account private key
+    privateKeySecretRef:
+      name: letsencrypt-prod
+
+    # Enable HTTP-01 challenge provider
+    solvers:
+      - http01:
+          ingress:
+            class: nginx
+
+---
+# Ingress - Routes external traffic to your API
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: morpho-api-ingress
+  annotations:
+    # Use NGINX Ingress Controller
+    kubernetes.io/ingress.class: nginx
+
+    # Enable SSL certificate auto-provisioning
+    cert-manager.io/cluster-issuer: letsencrypt-prod
+
+    # Force HTTPS redirect
+    nginx.ingress.kubernetes.io/force-ssl-redirect: 'true'
+
+    # Increase body size for file uploads
+    nginx.ingress.kubernetes.io/proxy-body-size: '10m'
+
+    # CORS settings
+    nginx.ingress.kubernetes.io/enable-cors: 'true'
+    nginx.ingress.kubernetes.io/cors-allow-origin: 'https://yourdomain.com' # ⚠️ CHANGE THIS
+
+spec:
+  # SSL/TLS Configuration
+  tls:
+    - hosts:
+        - api.yourdomain.com # ⚠️ CHANGE THIS
+      secretName: morpho-api-tls # Certificate will be stored here
+
+  # Routing Rules
+  rules:
+    - host: api.yourdomain.com # ⚠️ CHANGE THIS
+      http:
+        paths:
+          # Route all traffic to the API service
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: morpho-api-service
+                port:
+                  number: 80
+
+---
+# Optional: Health check endpoint without TLS for load balancers
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: morpho-api-health-ingress
+  annotations:
+    kubernetes.io/ingress.class: nginx
+spec:
+  rules:
+    - http:
+        paths:
+          - path: /health
+            pathType: Prefix
+            backend:
+              service:
+                name: morpho-api-service
+                port:
+                  number: 80
