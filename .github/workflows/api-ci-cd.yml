@@ -178,8 +178,9 @@ jobs:
         env:
           RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
         run: |
-          railway link --project ${{ secrets.RAILWAY_PROJECT_ID }}
-          railway up --service morpho-api-dev
+          export RAILWAY_PROJECT_ID=${{ secrets.RAILWAY_PROJECT_ID }}
+          export RAILWAY_SERVICE=morpho-api-dev
+          railway up
 
       - name: Deployment Success
         run: |
@@ -209,8 +210,9 @@ jobs:
         env:
           RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
         run: |
-          railway link --project ${{ secrets.RAILWAY_PROJECT_ID }}
-          railway up --service morpho-api-prod
+          export RAILWAY_PROJECT_ID=${{ secrets.RAILWAY_PROJECT_ID }}
+          export RAILWAY_SERVICE=morpho-api-prod
+          railway up
 
       - name: Deployment Success
         run: |
