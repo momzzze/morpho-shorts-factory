@@ -180,6 +180,19 @@ jobs:
         run: |
           railway link ${{ secrets.RAILWAY_PROJECT_ID }}
           railway up --service morpho-api-dev
+
+      - name: Deployment Success
+        run: |
+          echo "🚀 Deployed to DEV environment"
+          echo "Check Railway dashboard: https://railway.app/project/${{ secrets.RAILWAY_PROJECT_ID }}"
+
+  # ==============================================================================
+  # Deploy to Railway PROD (Manual Approval Required)
+  # ==============================================================================
+  deploy-railway-prod:
+    name: Deploy to Railway PROD (Manual)
+    needs: build-and-test
+    runs-on: ubuntu-latest
     if: github.event_name == 'push' && github.ref == 'refs/heads/production'
     environment:
       name: production
