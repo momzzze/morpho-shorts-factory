@@ -171,24 +171,15 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
+      - name: Install Railway CLI
+        run: npm install -g @railway/cli
+
       - name: Deploy to Railway DEV
-        uses: railwayapp/railway-deploy@v1
-        with:
-          railway_token: ${{ secrets.RAILWAY_TOKEN }}
-          service: morpho-api-dev
-
-      - name: Deployment Success
+        env:
+          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
         run: |
-          echo "🚀 Deployed to DEV environment"
-          echo "Check Railway dashboard: https://railway.app/project/${{ secrets.RAILWAY_PROJECT_ID }}"
-
-  # ==============================================================================
-  # Deploy to Railway PROD (Manual Approval Required)
-  # ==============================================================================
-  deploy-railway-prod:
-    name: Deploy to Railway PROD (Manual)
-    needs: build-and-test
-    runs-on: ubuntu-latest
+          railway link ${{ secrets.RAILWAY_PROJECT_ID }}
+          railway up --service morpho-api-dev
     if: github.event_name == 'push' && github.ref == 'refs/heads/production'
     environment:
       name: production
@@ -198,11 +189,15 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
+      - name: Install Railway CLI
+        run: npm install -g @railway/cli
+
       - name: Deploy to Railway PROD
-        uses: railwayapp/railway-deploy@v1
-        with:
-          railway_token: ${{ secrets.RAILWAY_TOKEN }}
-          service: morpho-api-prod
+        env:
+          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
+        run: |
+          railway link ${{ secrets.RAILWAY_PROJECT_ID }}
+          railway up --service morpho-api-prod
 
       - name: Deployment Success
         run: |
