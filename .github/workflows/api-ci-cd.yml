@@ -179,8 +179,7 @@ jobs:
           RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
         run: |
           export RAILWAY_PROJECT_ID=${{ secrets.RAILWAY_PROJECT_ID }}
-          export RAILWAY_SERVICE=morpho-api-dev
-          railway up
+          railway up --service morpho-api-dev
 
       - name: Deployment Success
         run: |
@@ -211,8 +210,7 @@ jobs:
           RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
         run: |
           export RAILWAY_PROJECT_ID=${{ secrets.RAILWAY_PROJECT_ID }}
-          export RAILWAY_SERVICE=morpho-api-prod
-          railway up
+          railway up --service morpho-api-prod
 
       - name: Deployment Success
         run: |
