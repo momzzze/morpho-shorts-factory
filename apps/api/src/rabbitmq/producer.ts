@@ -2,7 +2,7 @@
 // RabbitMQ Producer
 // ==============================================================================
 
-import amqplib, { Channel, Connection } from 'amqplib';
+import amqplib from 'amqplib';
 
 interface RabbitMQConfig {
   url: string;
@@ -10,8 +10,8 @@ interface RabbitMQConfig {
 }
 
 export class RabbitMQProducer {
-  private connection: Connection | null = null;
-  private channel: Channel | null = null;
+  private connection: Awaited<ReturnType<typeof amqplib.connect>> | null = null;
+  private channel: Awaited<ReturnType<Awaited<ReturnType<typeof amqplib.connect>>['createChannel']>> | null = null;
   private readonly config: Required<RabbitMQConfig>;
 
   constructor(config: RabbitMQConfig) {

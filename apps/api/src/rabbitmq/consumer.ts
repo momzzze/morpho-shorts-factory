@@ -2,7 +2,7 @@
 // RabbitMQ Consumer (if needed in API)
 // ==============================================================================
 
-import amqplib, { Channel, Connection } from 'amqplib';
+import amqplib from 'amqplib';
 
 interface RabbitMQConfig {
   url: string;
@@ -12,8 +12,8 @@ interface RabbitMQConfig {
 export type MessageHandler = (message: any) => Promise<void>;
 
 export class RabbitMQConsumer {
-  private connection: Connection | null = null;
-  private channel: Channel | null = null;
+  private connection: Awaited<ReturnType<typeof amqplib.connect>> | null = null;
+  private channel: Awaited<ReturnType<Awaited<ReturnType<typeof amqplib.connect>>['createChannel']>> | null = null;
   private readonly config: Required<RabbitMQConfig>;
 
   constructor(config: RabbitMQConfig) {
@@ -27,11 +27,11 @@ export class RabbitMQConsumer {
     try {
       console.log('🐰 Connecting to RabbitMQ Consumer...');
       this.connection = await amqplib.connect(this.config.url);
-      
+
       if (!this.connection) {
         throw new Error('Failed to create RabbitMQ connection');
       }
-      
+
       this.channel = await this.connection.createChannel();
 
       if (!this.channel) {
