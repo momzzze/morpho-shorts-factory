@@ -55,8 +55,16 @@ export class RabbitMQProducer {
   }
 
   async close(): Promise<void> {
-    await this.channel?.close();
-    await this.connection?.close();
-    console.log('👋 RabbitMQ connection closed');
+    try {
+      if (this.channel) {
+        await this.channel.close();
+      }
+      if (this.connection) {
+        await this.connection.close();
+      }
+      console.log('👋 RabbitMQ connection closed');
+    } catch (error) {
+      console.error('Error closing RabbitMQ connection:', error);
+    }
   }
 }

@@ -27,7 +27,16 @@ export class RabbitMQConsumer {
     try {
       console.log('🐰 Connecting to RabbitMQ Consumer...');
       this.connection = await amqplib.connect(this.config.url);
+      
+      if (!this.connection) {
+        throw new Error('Failed to create RabbitMQ connection');
+      }
+      
       this.channel = await this.connection.createChannel();
+
+      if (!this.channel) {
+        throw new Error('Failed to create RabbitMQ channel');
+      }
 
       await this.channel.assertExchange(this.config.exchange, 'topic', {
         durable: true,
@@ -74,8 +83,16 @@ export class RabbitMQConsumer {
   }
 
   async close(): Promise<void> {
-    await this.channel?.close();
-    await this.connection?.close();
-    console.log('👋 RabbitMQ Consumer closed');
+    try {
+      if (this.channel) {
+        await this.channel.close();
+      }
+      if (this.connection) {
+        await this.connection.close();
+      }
+      console.log('👋 RabbitMQ Consumer closed');
+    } catch (error) {
+      console.error('Error closing RabbitMQ consumer:', error);
+    }
   }
 }
