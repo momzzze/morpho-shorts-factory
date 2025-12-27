@@ -18,5 +18,5 @@ RUN pnpm build
 
 EXPOSE 5001
 
-# Run migrations and start
-CMD pnpm exec prisma migrate deploy && node dist/index.js
+# Use the start script from package.json which handles db push with retry logic
+CMD ["pnpm", "start"]
