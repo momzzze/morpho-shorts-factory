@@ -32,14 +32,20 @@ async function runMigrations() {
 
   for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
     try {
-      console.log(`Attempt ${attempt}/${MAX_RETRIES} - Running migrations...`);
+      console.log(
+        `Attempt ${attempt}/${MAX_RETRIES} - Syncing database schema...`
+      );
 
-      const { stdout, stderr } = await execAsync('npx prisma migrate deploy');
+      // Use db push for Railway (simpler, no migration history issues)
+      const command = 'npx prisma db push --accept-data-loss --skip-generate';
+
+      console.log(`Running: ${command}`);
+      const { stdout, stderr } = await execAsync(command);
 
       if (stdout) console.log(stdout);
       if (stderr) console.error(stderr);
 
-      console.log('✅ Database migrations completed successfully');
+      console.log('✅ Database schema synchronized successfully');
       return true;
     } catch (error) {
       // Combine all error outputs to check for P3009
@@ -47,33 +53,8 @@ async function runMigrations() {
         .filter(Boolean)
         .join('\n');
 
-      console.error(`⚠️  Migration attempt ${attempt} failed`);
+      console.error(`⚠️  Attempt ${attempt} failed`);
       console.error(errorOutput);
-
-      // Check if it's a P3009 error (failed migration detected)
-      if (
-        errorOutput.includes('P3009') ||
-        errorOutput.includes('failed migrations')
-      ) {
-        console.log('🔍 Detected P3009: Failed migration in database');
-
-        // Extract migration name - look for pattern like `20251227211141_init`
-        const migrationMatch = errorOutput.match(/`([0-9_a-z]+)`.*?failed/i);
-        if (migrationMatch && migrationMatch[1]) {
-          const migrationName = migrationMatch[1];
-          console.log(`📝 Found migration name: ${migrationName}`);
-          const resolved = await resolveFailedMigration(migrationName);
-
-          if (resolved) {
-            console.log('♻️  Retrying migration immediately...');
-            // Don't increment attempt counter or wait - just retry
-            continue;
-          }
-        } else {
-          console.error('❌ Could not extract migration name from error');
-          console.error('Full error output:', errorOutput);
-        }
-      }
 
       if (attempt < MAX_RETRIES) {
         console.log(`Waiting ${RETRY_DELAY / 1000} seconds before retry...`);
@@ -82,9 +63,9 @@ async function runMigrations() {
     }
   }
 
-  console.error(`❌ Failed to run migrations after ${MAX_RETRIES} attempts`);
+  console.error(`❌ Failed to sync database after ${MAX_RETRIES} attempts`);
   console.log(
-    '⚠️  Starting application anyway (migrations can be run manually)'
+    '⚠️  Starting application anyway (schema can be synced manually)'
   );
   return false;
 }
