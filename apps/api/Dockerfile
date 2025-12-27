@@ -11,7 +11,7 @@ COPY apps/api/tsconfig.json ./tsconfig.json
 COPY apps/api/prisma ./prisma
 COPY apps/api/prisma.config.ts ./prisma.config.ts
 
-# Generate Prisma Client
+# Generate Prisma Client (must run AFTER copying schema)
 RUN pnpm db:generate
 
 RUN pnpm build
