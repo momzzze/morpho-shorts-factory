@@ -75,8 +75,8 @@ async function startApp() {
 
   console.log('🎯 Starting application...');
 
-  // Import and start the actual application
-  await import('./index.js');
+  // Import and start the actual application (from dist/ after build)
+  await import('../dist/index.js');
 }
 
 startApp().catch((error) => {
