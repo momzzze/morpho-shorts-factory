@@ -37,7 +37,7 @@ async function runMigrations() {
       );
 
       // Use db push for Railway (simpler, no migration history issues)
-      const command = 'npx prisma db push --accept-data-loss --skip-generate';
+      const command = 'npx prisma db push --accept-data-loss';
 
       console.log(`Running: ${command}`);
       const { stdout, stderr } = await execAsync(command);
