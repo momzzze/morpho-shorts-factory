@@ -30,6 +30,17 @@ async function runMigrations() {
   console.log('🚀 Starting deployment...');
   console.log('⏳ Waiting for database connection...');
 
+  // First, regenerate Prisma client to ensure we have the latest schema
+  try {
+    console.log('🔄 Regenerating Prisma client with latest schema...');
+    await execAsync('npx prisma generate');
+    console.log('✅ Prisma client regenerated');
+  } catch (error) {
+    console.error(
+      '⚠️  Failed to regenerate Prisma client, continuing anyway...'
+    );
+  }
+
   for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
     try {
       console.log(
