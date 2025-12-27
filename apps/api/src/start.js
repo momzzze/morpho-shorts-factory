@@ -42,7 +42,11 @@ async function runMigrations() {
       console.log('✅ Database migrations completed successfully');
       return true;
     } catch (error) {
-      const errorOutput = error.stderr || error.stdout || error.message;
+      // Combine all error outputs to check for P3009
+      const errorOutput = [error.stderr, error.stdout, error.message]
+        .filter(Boolean)
+        .join('\n');
+
       console.error(`⚠️  Migration attempt ${attempt} failed`);
       console.error(errorOutput);
 
@@ -51,18 +55,23 @@ async function runMigrations() {
         errorOutput.includes('P3009') ||
         errorOutput.includes('failed migrations')
       ) {
-        console.log('🔍 Detected failed migration in database');
+        console.log('🔍 Detected P3009: Failed migration in database');
 
-        // Extract migration name from error message
-        const migrationMatch = errorOutput.match(
-          /`([^`]+)`.*?migration.*?failed/
-        );
+        // Extract migration name - look for pattern like `20251227211141_init`
+        const migrationMatch = errorOutput.match(/`([0-9_a-z]+)`.*?failed/i);
         if (migrationMatch && migrationMatch[1]) {
           const migrationName = migrationMatch[1];
-          console.log(`📝 Migration name: ${migrationName}`);
-          await resolveFailedMigration(migrationName);
-          // Don't wait, retry immediately after resolving
-          continue;
+          console.log(`📝 Found migration name: ${migrationName}`);
+          const resolved = await resolveFailedMigration(migrationName);
+
+          if (resolved) {
+            console.log('♻️  Retrying migration immediately...');
+            // Don't increment attempt counter or wait - just retry
+            continue;
+          }
+        } else {
+          console.error('❌ Could not extract migration name from error');
+          console.error('Full error output:', errorOutput);
         }
       }
 
