@@ -10,6 +10,28 @@ async function sleep(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
+async function resolveFailedMigrations() {
+  try {
+    console.log('🔍 Checking for failed migrations...');
+    const { stdout } = await execAsync('npx prisma migrate status');
+    
+    if (stdout.includes('failed') || stdout.includes('Failed')) {
+      console.log('⚠️  Found failed migration, attempting to resolve...');
+      
+      // Mark failed migration as rolled back so we can retry
+      const { stdout: resolveOut } = await execAsync(
+        'npx prisma migrate resolve --rolled-back 20251227211141_init'
+      );
+      console.log(resolveOut);
+      console.log('✅ Failed migration marked as rolled back');
+      return true;
+    }
+  } catch (error) {
+    console.log('ℹ️  No failed migrations to resolve or database not ready yet');
+  }
+  return false;
+}
+
 async function runMigrations() {
   console.log('🚀 Starting deployment...');
   console.log('⏳ Waiting for database connection...');
@@ -17,6 +39,12 @@ async function runMigrations() {
   for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
     try {
       console.log(`Attempt ${attempt}/${MAX_RETRIES} - Running migrations...`);
+      
+      // First try to resolve any failed migrations
+      if (attempt === 1) {
+        await resolveFailedMigrations();
+      }
+      
       const { stdout, stderr } = await execAsync('npx prisma migrate deploy');
 
       if (stdout) console.log(stdout);
@@ -26,6 +54,12 @@ async function runMigrations() {
       return true;
     } catch (error) {
       console.error(`⚠️  Migration attempt ${attempt} failed:`, error.message);
+      
+      // Check if it's a P3009 error (failed migration detected)
+      if (error.message.includes('P3009')) {
+        console.log('🔧 Detected failed migration, resolving...');
+        await resolveFailedMigrations();
+      }
 
       if (attempt < MAX_RETRIES) {
         console.log(`Waiting ${RETRY_DELAY / 1000} seconds before retry...`);
