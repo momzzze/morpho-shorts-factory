@@ -10,28 +10,20 @@ async function sleep(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
-async function resolveFailedMigrations() {
+async function resolveFailedMigration(migrationName) {
   try {
-    console.log('🔍 Checking for failed migrations...');
-    const { stdout } = await execAsync('npx prisma migrate status');
+    console.log(`🔧 Resolving failed migration: ${migrationName}`);
 
-    if (stdout.includes('failed') || stdout.includes('Failed')) {
-      console.log('⚠️  Found failed migration, attempting to resolve...');
-
-      // Mark failed migration as rolled back so we can retry
-      const { stdout: resolveOut } = await execAsync(
-        'npx prisma migrate resolve --rolled-back 20251227211141_init'
-      );
-      console.log(resolveOut);
-      console.log('✅ Failed migration marked as rolled back');
-      return true;
-    }
-  } catch (error) {
-    console.log(
-      'ℹ️  No failed migrations to resolve or database not ready yet'
+    const { stdout } = await execAsync(
+      `npx prisma migrate resolve --rolled-back "${migrationName}"`
     );
+    console.log(stdout);
+    console.log('✅ Failed migration marked as rolled back, will retry');
+    return true;
+  } catch (error) {
+    console.error('⚠️  Failed to resolve migration:', error.message);
+    return false;
   }
-  return false;
 }
 
 async function runMigrations() {
@@ -42,11 +34,6 @@ async function runMigrations() {
     try {
       console.log(`Attempt ${attempt}/${MAX_RETRIES} - Running migrations...`);
 
-      // First try to resolve any failed migrations
-      if (attempt === 1) {
-        await resolveFailedMigrations();
-      }
-
       const { stdout, stderr } = await execAsync('npx prisma migrate deploy');
 
       if (stdout) console.log(stdout);
@@ -55,12 +42,28 @@ async function runMigrations() {
       console.log('✅ Database migrations completed successfully');
       return true;
     } catch (error) {
-      console.error(`⚠️  Migration attempt ${attempt} failed:`, error.message);
+      const errorOutput = error.stderr || error.stdout || error.message;
+      console.error(`⚠️  Migration attempt ${attempt} failed`);
+      console.error(errorOutput);
 
       // Check if it's a P3009 error (failed migration detected)
-      if (error.message.includes('P3009')) {
-        console.log('🔧 Detected failed migration, resolving...');
-        await resolveFailedMigrations();
+      if (
+        errorOutput.includes('P3009') ||
+        errorOutput.includes('failed migrations')
+      ) {
+        console.log('🔍 Detected failed migration in database');
+
+        // Extract migration name from error message
+        const migrationMatch = errorOutput.match(
+          /`([^`]+)`.*?migration.*?failed/
+        );
+        if (migrationMatch && migrationMatch[1]) {
+          const migrationName = migrationMatch[1];
+          console.log(`📝 Migration name: ${migrationName}`);
+          await resolveFailedMigration(migrationName);
+          // Don't wait, retry immediately after resolving
+          continue;
+        }
       }
 
       if (attempt < MAX_RETRIES) {
