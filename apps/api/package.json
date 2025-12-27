@@ -8,6 +8,7 @@
     "dev": "nodemon --watch src --ext ts --exec \"tsx src/index.ts\"",
     "build": "prisma generate && tsc -p tsconfig.json",
     "start": "node src/start.js",
+    "start:simple": "prisma db push --accept-data-loss && node dist/index.js",
     "start:prod": "node dist/index.js",
     "db:generate": "prisma generate",
     "db:migrate": "prisma migrate dev",
