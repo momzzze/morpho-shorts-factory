@@ -2,8 +2,7 @@
   "name": "morpho-shorts-factory",
   "private": true,
   "workspaces": [
-    "apps/*",
-    "packages/*"
+    "apps/*"
   ],
   "scripts": {
     "dev:api": "pnpm --filter api dev",
