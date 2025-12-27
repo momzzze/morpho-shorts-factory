@@ -1,0 +1,194 @@
+{
+    "info": {
+        "name": "morpho-shorts-factory",
+        "_postman_id": "morpho-shorts-factory-api",
+        "description": "Complete API collection for Morpho Shorts Factory",
+        "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+    },
+    "item": [
+        {
+            "name": "health-check",
+            "item": [
+                {
+                    "name": "Live Check",
+                    "request": {
+                        "method": "GET",
+                        "header": [],
+                        "url": {
+                            "raw": "{{baseUrl}}/api/v1/health/live",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "v1",
+                                "health",
+                                "live"
+                            ]
+                        },
+                        "description": "Basic liveness check - returns ok if service is running"
+                    },
+                    "response": []
+                },
+                {
+                    "name": "Ready Check",
+                    "request": {
+                        "method": "GET",
+                        "header": [],
+                        "url": {
+                            "raw": "{{baseUrl}}/api/v1/health/ready",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "v1",
+                                "health",
+                                "ready"
+                            ]
+                        },
+                        "description": "Readiness check - verifies database connection and service health"
+                    },
+                    "response": []
+                }
+            ],
+            "description": "Health check endpoints for service monitoring"
+        },
+        {
+            "name": "auth",
+            "item": [
+                {
+                    "name": "Register User",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n  \"email\": \"test@example.com\",\n  \"password\": \"testPassword123\",\n  \"username\": \"testuser\",\n  \"displayName\": \"Test User\"\n}"
+                        },
+                        "url": {
+                            "raw": "{{baseUrl}}/api/v1/auth/register",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "v1",
+                                "auth",
+                                "register"
+                            ]
+                        },
+                        "description": "Register a new user account. Returns user object and JWT token.\n\nRequired fields:\n- email (valid email format)\n- password (min 8 characters)\n\nOptional fields:\n- username (3-30 characters)\n- displayName (1-100 characters)"
+                    },
+                    "response": [],
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "type": "text/javascript",
+                                "exec": [
+                                    "// Save token to environment variable",
+                                    "if (pm.response.code === 201) {",
+                                    "    const jsonData = pm.response.json();",
+                                    "    if (jsonData.data && jsonData.data.token) {",
+                                    "        pm.environment.set('authToken', jsonData.data.token);",
+                                    "        console.log('Token saved to environment:', jsonData.data.token);",
+                                    "    }",
+                                    "}"
+                                ]
+                            }
+                        }
+                    ]
+                },
+                {
+                    "name": "Login User",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n  \"email\": \"test@example.com\",\n  \"password\": \"testPassword123\"\n}"
+                        },
+                        "url": {
+                            "raw": "{{baseUrl}}/api/v1/auth/login",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "v1",
+                                "auth",
+                                "login"
+                            ]
+                        },
+                        "description": "Login with email and password. Returns user object and JWT token.\n\nRequired fields:\n- email\n- password"
+                    },
+                    "response": [],
+                    "event": [
+                        {
+                            "listen": "test",
+                            "script": {
+                                "type": "text/javascript",
+                                "exec": [
+                                    "// Save token to environment variable",
+                                    "if (pm.response.code === 200) {",
+                                    "    const jsonData = pm.response.json();",
+                                    "    if (jsonData.data && jsonData.data.token) {",
+                                    "        pm.environment.set('authToken', jsonData.data.token);",
+                                    "        console.log('Token saved to environment:', jsonData.data.token);",
+                                    "    }",
+                                    "}"
+                                ]
+                            }
+                        }
+                    ]
+                },
+                {
+                    "name": "Get Current User (Protected)",
+                    "request": {
+                        "method": "GET",
+                        "header": [
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{authToken}}",
+                                "description": "JWT token from login/register"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{baseUrl}}/api/v1/auth/me",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "v1",
+                                "auth",
+                                "me"
+                            ]
+                        },
+                        "description": "Get current authenticated user profile. Requires valid JWT token in Authorization header.\n\nThis is a protected route example - token is automatically used from environment variable."
+                    },
+                    "response": []
+                }
+            ],
+            "description": "Authentication endpoints - login, register, and user management"
+        }
+    ],
+    "variable": [
+        {
+            "key": "baseUrl",
+            "value": "http://localhost:5001",
+            "type": "string"
+        }
+    ]
+}

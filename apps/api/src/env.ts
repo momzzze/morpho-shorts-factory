@@ -18,6 +18,9 @@ const envSchema = z.object({
   DATABASE_URL: z.string().optional(),
   SESSION_SECRET: z.string().optional(),
   API_KEY: z.string().optional(),
+
+  // JWT authentication
+  JWT_SECRET: z.string().min(32, 'JWT_SECRET must be at least 32 characters'),
 });
 
 const parsed = envSchema.safeParse(process.env);

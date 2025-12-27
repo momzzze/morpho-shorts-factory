@@ -2,9 +2,35 @@
 // Validation Utils - Common validation helpers
 // ==============================================================================
 
+import { z } from 'zod';
+import { ApiError } from '../errors.js';
+
 export interface ValidationResult {
   isValid: boolean;
   errors?: string[];
+}
+
+/**
+ * Validate request data against Zod schema
+ * Throws ApiError if validation fails
+ */
+export function validateRequest<T>(schema: z.ZodSchema<T>, data: unknown): T {
+  const result = schema.safeParse(data);
+
+  if (!result.success) {
+    const errors = result.error.issues.map((err: z.ZodIssue) => ({
+      field: err.path.join('.'),
+      message: err.message,
+    }));
+
+    throw new ApiError('Validation failed', {
+      statusCode: 400,
+      code: 'VALIDATION_ERROR',
+      details: errors,
+    });
+  }
+
+  return result.data;
 }
 
 export function validateRequired(
