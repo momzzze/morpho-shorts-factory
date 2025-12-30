@@ -74,9 +74,13 @@ export class VideoService {
         userId: input.userId,
         title: input.title,
         description: input.description,
+        niche: input.niche,
         status: 'PENDING',
         sourceUrl: '',
         sourceSize: 0,
+        sourceVideos: input.sourceVideos
+          ? JSON.stringify(input.sourceVideos)
+          : undefined,
       },
     });
 
