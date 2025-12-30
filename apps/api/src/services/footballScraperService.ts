@@ -4,7 +4,7 @@
 
 import { logger } from '../logger.js';
 import { FootballMatch } from './footballMatchService.js';
-
+import { isFinished, parseScoreStr } from '../utils/footballParseHelpers.js';
 /**
  * Scrape match data from various sources
  * Options:
@@ -309,69 +309,32 @@ export class FootballScraperService {
       const matches: FootballMatch[] = [];
 
       // FotMob league API structure - matches are in fixtures.allMatches array
-      let matchList: any[] = [];
-
-      // Try different possible structures in FotMob's league API response
-      if (data.matches && Array.isArray(data.matches)) {
-        matchList = data.matches;
-      } else if (
-        data.fixtures?.allMatches &&
-        Array.isArray(data.fixtures.allMatches)
-      ) {
-        // FotMob league endpoint: fixtures.allMatches contains all matches
-        matchList = data.fixtures.allMatches;
-      } else if (data.fixtures && Array.isArray(data.fixtures)) {
-        matchList = data.fixtures;
-      } else if (data.allMatches && Array.isArray(data.allMatches)) {
-        matchList = data.allMatches;
-      } else if (
-        data.overview?.allMatches &&
-        Array.isArray(data.overview.allMatches)
-      ) {
-        matchList = data.overview.allMatches;
-      } else if (data.matchesData && Array.isArray(data.matchesData)) {
-        matchList = data.matchesData;
-      } else {
-        // Log the actual structure for debugging
-        logger.warn(
-          {
-            availableKeys: Object.keys(data),
-            fixturesKeys: data.fixtures ? Object.keys(data.fixtures) : null,
-            overviewKeys: data.overview ? Object.keys(data.overview) : null,
-            leagueId,
-          },
-          'Unexpected FotMob league API structure'
-        );
-
-        // Return empty array instead of crashing
-        return [];
-      }
+      const matchList = data.fixtures?.allMatches ?? [];
 
       for (const match of matchList) {
-        if (match.status?.finished !== true) continue;
+        if (!isFinished(match)) continue;
+
+        const { home: homeScore, away: awayScore } = parseScoreStr(
+          match.status?.scoreStr
+        );
 
         matches.push({
           id: String(match.id),
-          homeTeam: match.home?.name || '',
-          awayTeam: match.away?.name || '',
-          homeScore: match.home?.score || 0,
-          awayScore: match.away?.score || 0,
-          date: new Date(match.status?.utcTime || Date.now()),
-          league: data.name || data.details?.name || 'Unknown',
+          homeTeam: match.home?.name ?? '',
+          awayTeam: match.away?.name ?? '',
+          homeScore,
+          awayScore,
+          date: new Date(match.status?.utcTime ?? Date.now()),
+          league: data.details?.name ?? data.name ?? 'Unknown',
           stats: {
-            totalGoals: (match.home?.score || 0) + (match.away?.score || 0),
+            totalGoals: homeScore + awayScore,
             totalShots: 0,
             shotsOnTarget: 0,
             yellowCards: 0,
             redCards: 0,
             penalties: 0,
           },
-          social: {
-            views: 0,
-            likes: 0,
-            comments: 0,
-            shares: 0,
-          },
+          social: { views: 0, likes: 0, comments: 0, shares: 0 },
         });
       }
 
