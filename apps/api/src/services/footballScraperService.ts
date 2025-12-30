@@ -291,19 +291,8 @@ export class FootballScraperService {
       if (!response.ok) {
         throw new Error(`FotMob API error: ${response.status}`);
       }
-      console.log('====================================');
-      console.log(response);
-      console.log('====================================');
+
       const data = await response.json();
-      console.log('FotMob league keys:', Object.keys(data));
-      console.log(
-        'FotMob fixtures keys:',
-        data.fixtures ? Object.keys(data.fixtures) : null
-      );
-      console.log(
-        'Sample data.fixtures?.allMatches?.[0]:',
-        data.fixtures?.allMatches?.[0]
-      );
 
       // Parse matches from league data
       const matches: FootballMatch[] = [];
