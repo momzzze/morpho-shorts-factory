@@ -182,6 +182,800 @@
                 }
             ],
             "description": "Authentication endpoints - login, register, and user management"
+        },
+        {
+            "name": "test",
+            "item": [
+                {
+                    "name": "TikTok",
+                    "item": [
+                        {
+                            "name": "test tiktok generate videos",
+                            "request": {
+                                "method": "GET",
+                                "header": [],
+                                "url": {
+                                    "raw": "{{baseUrl}}/api/v1/test/tiktok/:niche?count=5",
+                                    "host": [
+                                        "{{baseUrl}}"
+                                    ],
+                                    "path": [
+                                        "api",
+                                        "v1",
+                                        "test",
+                                        "tiktok",
+                                        ":niche"
+                                    ],
+                                    "query": [
+                                        {
+                                            "key": "count",
+                                            "value": "5",
+                                            "description": "Number of videos to search (default: 5)"
+                                        }
+                                    ],
+                                    "variable": [
+                                        {
+                                            "key": "niche",
+                                            "value": "Paul Scholes",
+                                            "description": "Search niche/keyword"
+                                        }
+                                    ]
+                                },
+                                "description": "Search and return top TikTok videos by niche/keyword. Returns video metadata without downloading."
+                            },
+                            "response": []
+                        },
+                        {
+                            "name": "test tiktok generate videos Copy",
+                            "request": {
+                                "method": "POST",
+                                "header": [
+                                    {
+                                        "key": "Content-Type",
+                                        "value": "application/json"
+                                    }
+                                ],
+                                "body": {
+                                    "mode": "raw",
+                                    "raw": "{\n  \"niche\": \"Paul Scholes\",\n  \"count\": 2,\n  \"username\": \"testuser\"\n}"
+                                },
+                                "url": {
+                                    "raw": "{{baseUrl}}/api/v1/test/tiktok/full-workflow",
+                                    "host": [
+                                        "{{baseUrl}}"
+                                    ],
+                                    "path": [
+                                        "api",
+                                        "v1",
+                                        "test",
+                                        "tiktok",
+                                        "full-workflow"
+                                    ]
+                                },
+                                "description": "Full TikTok workflow: Search top videos, download them, and upload to GCS.\n\nBody parameters:\n- niche: Search keyword/niche\n- count: Number of videos to process\n- username: User folder name (defaults to 'testuser')"
+                            },
+                            "response": []
+                        }
+                    ],
+                    "description": "TikTok scraping and download test endpoints"
+                },
+                {
+                    "name": "YouTube",
+                    "item": [
+                        {
+                            "name": "Search YouTube Videos",
+                            "request": {
+                                "method": "GET",
+                                "header": [],
+                                "url": {
+                                    "raw": "{{baseUrl}}/api/v1/test/youtube/:query?count=10",
+                                    "host": [
+                                        "{{baseUrl}}"
+                                    ],
+                                    "path": [
+                                        "api",
+                                        "v1",
+                                        "test",
+                                        "youtube",
+                                        ":query"
+                                    ],
+                                    "query": [
+                                        {
+                                            "key": "count",
+                                            "value": "10",
+                                            "description": "Number of videos to return (default: 10, max: 50)"
+                                        }
+                                    ],
+                                    "variable": [
+                                        {
+                                            "key": "query",
+                                            "value": "football raw footage",
+                                            "description": "Search query"
+                                        }
+                                    ]
+                                },
+                                "description": "Search YouTube videos by keyword. Returns video metadata including title, description, channel, and thumbnail."
+                            },
+                            "response": []
+                        },
+                        {
+                            "name": "Search Raw Footage",
+                            "request": {
+                                "method": "GET",
+                                "header": [],
+                                "url": {
+                                    "raw": "{{baseUrl}}/api/v1/test/youtube/raw/:niche?count=10",
+                                    "host": [
+                                        "{{baseUrl}}"
+                                    ],
+                                    "path": [
+                                        "api",
+                                        "v1",
+                                        "test",
+                                        "youtube",
+                                        "raw",
+                                        ":niche"
+                                    ],
+                                    "query": [
+                                        {
+                                            "key": "count",
+                                            "value": "10",
+                                            "description": "Number of videos to return"
+                                        }
+                                    ],
+                                    "variable": [
+                                        {
+                                            "key": "niche",
+                                            "value": "football",
+                                            "description": "Niche/topic (e.g., football, basketball)"
+                                        }
+                                    ]
+                                },
+                                "description": "Search for raw footage videos on YouTube. Automatically searches multiple queries like 'football raw footage', 'football unedited footage', 'football training footage', etc."
+                            },
+                            "response": []
+                        },
+                        {
+                            "name": "Download YouTube Video",
+                            "request": {
+                                "method": "POST",
+                                "header": [
+                                    {
+                                        "key": "Content-Type",
+                                        "value": "application/json"
+                                    }
+                                ],
+                                "body": {
+                                    "mode": "raw",
+                                    "raw": "{\n  \"videoId\": \"dQw4w9WgXcQ\",\n  \"username\": \"testuser\"\n}"
+                                },
+                                "url": {
+                                    "raw": "{{baseUrl}}/api/v1/test/youtube/download",
+                                    "host": [
+                                        "{{baseUrl}}"
+                                    ],
+                                    "path": [
+                                        "api",
+                                        "v1",
+                                        "test",
+                                        "youtube",
+                                        "download"
+                                    ]
+                                },
+                                "description": "Download a single YouTube video and upload to GCS.\n\nBody parameters:\n- videoId: YouTube video ID (from URL)\n- username: User folder name (defaults to 'testuser')"
+                            },
+                            "response": []
+                        },
+                        {
+                            "name": "YouTube Full Workflow",
+                            "request": {
+                                "method": "POST",
+                                "header": [
+                                    {
+                                        "key": "Content-Type",
+                                        "value": "application/json"
+                                    }
+                                ],
+                                "body": {
+                                    "mode": "raw",
+                                    "raw": "{\n  \"niche\": \"football\",\n  \"count\": 3,\n  \"username\": \"testuser\"\n}"
+                                },
+                                "url": {
+                                    "raw": "{{baseUrl}}/api/v1/test/youtube/full-workflow",
+                                    "host": [
+                                        "{{baseUrl}}"
+                                    ],
+                                    "path": [
+                                        "api",
+                                        "v1",
+                                        "test",
+                                        "youtube",
+                                        "full-workflow"
+                                    ]
+                                },
+                                "description": "Full YouTube workflow: Search for raw footage, download videos, and upload to GCS.\n\nBody parameters:\n- niche: Topic/niche for raw footage search\n- count: Number of videos to process (default: 3)\n- username: User folder name (defaults to 'testuser')\n\nNote: Requires YOUTUBE_API_KEY in .env file"
+                            },
+                            "response": []
+                        }
+                    ],
+                    "description": "YouTube scraping and download test endpoints - for raw footage content"
+                }
+            ],
+            "description": "Test endpoints for video scraping and processing workflows"
+        },
+        {
+            "name": "football",
+            "item": [
+                {
+                    "name": "Generate Demo Matches",
+                    "request": {
+                        "method": "GET",
+                        "header": [],
+                        "url": {
+                            "raw": "{{baseUrl}}/api/v1/football/demo-matches?count=20",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "v1",
+                                "football",
+                                "demo-matches"
+                            ],
+                            "query": [
+                                {
+                                    "key": "count",
+                                    "value": "20",
+                                    "description": "Number of demo matches to generate (default: 20)"
+                                }
+                            ]
+                        },
+                        "description": "Generate realistic demo football match data with stats, social metrics, and scores. Useful for testing the match ranking algorithm."
+                    },
+                    "response": []
+                },
+                {
+                    "name": "Rank Matches",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n  \"matches\": [\n    {\n      \"id\": \"match_1\",\n      \"homeTeam\": \"Barcelona\",\n      \"awayTeam\": \"Real Madrid\",\n      \"homeScore\": 5,\n      \"awayScore\": 4,\n      \"date\": \"2024-12-29T00:00:00.000Z\",\n      \"league\": \"La Liga\",\n      \"stats\": {\n        \"totalGoals\": 9,\n        \"totalShots\": 35,\n        \"shotsOnTarget\": 18,\n        \"yellowCards\": 6,\n        \"redCards\": 1,\n        \"penalties\": 2\n      },\n      \"social\": {\n        \"views\": 5000000,\n        \"likes\": 250000,\n        \"comments\": 50000,\n        \"shares\": 100000\n      }\n    },\n    {\n      \"id\": \"match_2\",\n      \"homeTeam\": \"Manchester United\",\n      \"awayTeam\": \"Manchester City\",\n      \"homeScore\": 2,\n      \"awayScore\": 1,\n      \"date\": \"2024-12-28T00:00:00.000Z\",\n      \"league\": \"Premier League\",\n      \"stats\": {\n        \"totalGoals\": 3,\n        \"totalShots\": 20,\n        \"shotsOnTarget\": 10,\n        \"yellowCards\": 4,\n        \"redCards\": 0,\n        \"penalties\": 0\n      },\n      \"social\": {\n        \"views\": 2000000,\n        \"likes\": 100000,\n        \"comments\": 20000,\n        \"shares\": 50000\n      }\n    }\n  ],\n  \"config\": {\n    \"minGoals\": 2,\n    \"minExcitementScore\": 60,\n    \"maxDaysAgo\": 7,\n    \"preferredLeagues\": [\"Premier League\", \"La Liga\"]\n  }\n}"
+                        },
+                        "url": {
+                            "raw": "{{baseUrl}}/api/v1/football/rank-matches?limit=10",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "v1",
+                                "football",
+                                "rank-matches"
+                            ],
+                            "query": [
+                                {
+                                    "key": "limit",
+                                    "value": "10",
+                                    "description": "Maximum number of matches to return (default: 10)"
+                                }
+                            ]
+                        },
+                        "description": "Rank football matches by excitement score (0-130 points). Scores based on:\n- Goals (0-40 pts)\n- Action/Shots (0-30 pts)\n- Drama/Cards (0-15 pts)\n- Social Engagement (0-30 pts)\n- Match Importance (0-15 pts)\n\nFilters matches by minimum goals, excitement score, date range, and preferred leagues."
+                    },
+                    "response": []
+                },
+                {
+                    "name": "Detect Highlights",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n  \"match\": {\n    \"id\": \"match_1\",\n    \"homeTeam\": \"Liverpool\",\n    \"awayTeam\": \"Chelsea\",\n    \"homeScore\": 3,\n    \"awayScore\": 1,\n    \"date\": \"2024-12-29T00:00:00.000Z\",\n    \"league\": \"Premier League\",\n    \"stats\": {\n      \"totalGoals\": 4,\n      \"totalShots\": 22,\n      \"shotsOnTarget\": 12,\n      \"yellowCards\": 3,\n      \"redCards\": 0,\n      \"penalties\": 1\n    }\n  },\n  \"videoPath\": \"/path/to/match_video.mp4\"\n}"
+                        },
+                        "url": {
+                            "raw": "{{baseUrl}}/api/v1/football/detect-highlights",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "v1",
+                                "football",
+                                "detect-highlights"
+                            ]
+                        },
+                        "description": "Detect highlight moments in a football match (goals, saves, cards, penalties). Currently returns mock data - will integrate AI detection:\n- Audio analysis (crowd noise spikes)\n- Computer vision (ball tracking, celebrations)\n- OCR (scoreboard changes)\n- ML model (trained on highlights)"
+                    },
+                    "response": []
+                },
+                {
+                    "name": "Full Pipeline Demo",
+                    "request": {
+                        "method": "GET",
+                        "header": [],
+                        "url": {
+                            "raw": "{{baseUrl}}/api/v1/football/full-pipeline",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "v1",
+                                "football",
+                                "full-pipeline"
+                            ]
+                        },
+                        "description": "Complete football highlights workflow:\n1. Generate 30 demo matches\n2. Rank by excitement score (min 60 pts, 2+ goals)\n3. Select top 5 matches\n4. Detect highlights in #1 match\n\nReturns full breakdown of scoring and highlight segments."
+                    },
+                    "response": []
+                }
+            ],
+            "description": "Football Match Intelligence - Smart match selection and highlight extraction. Algorithm ranks matches 0-130 points based on excitement factors."
+        },
+        {
+            "name": "football-real-data",
+            "item": [
+                {
+                    "name": "Get League IDs",
+                    "request": {
+                        "method": "GET",
+                        "header": [],
+                        "url": {
+                            "raw": "{{baseUrl}}/api/v1/football/data/leagues",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "v1",
+                                "football",
+                                "data",
+                                "leagues"
+                            ]
+                        },
+                        "description": "Get reference for all available league IDs:\n- Premier League (39)\n- La Liga (140)\n- Bundesliga (78)\n- Serie A (135)\n- Ligue 1 (61)\n- Champions League (2)\n- Europa League (3)\n\nNo API key required for this endpoint."
+                    },
+                    "response": []
+                },
+                {
+                    "name": "Get Today's Matches",
+                    "request": {
+                        "method": "GET",
+                        "header": [],
+                        "url": {
+                            "raw": "{{baseUrl}}/api/v1/football/data/today",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "v1",
+                                "football",
+                                "data",
+                                "today"
+                            ]
+                        },
+                        "description": "Fetch all finished matches from today across all leagues. Returns match data with:\n- Final scores\n- Match statistics (shots, cards, etc.)\n- League information\n\nRequires: FOOTBALL_API_KEY in .env"
+                    },
+                    "response": []
+                },
+                {
+                    "name": "Get Today's Best Matches (Ranked)",
+                    "request": {
+                        "method": "GET",
+                        "header": [],
+                        "url": {
+                            "raw": "{{baseUrl}}/api/v1/football/data/today/ranked?limit=5&minGoals=3&enrichSocial=true&minExcitementScore=70",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "v1",
+                                "football",
+                                "data",
+                                "today",
+                                "ranked"
+                            ],
+                            "query": [
+                                {
+                                    "key": "limit",
+                                    "value": "5",
+                                    "description": "Number of matches to return (default: 5)"
+                                },
+                                {
+                                    "key": "minGoals",
+                                    "value": "3",
+                                    "description": "Minimum goals required (default: 2)"
+                                },
+                                {
+                                    "key": "enrichSocial",
+                                    "value": "true",
+                                    "description": "Fetch YouTube views/engagement (default: false)"
+                                },
+                                {
+                                    "key": "minExcitementScore",
+                                    "value": "70",
+                                    "description": "Minimum excitement score 0-130 (default: 60)"
+                                }
+                            ]
+                        },
+                        "description": "Get today's most exciting matches, ranked by algorithm.\n\n**Parameters:**\n- `limit`: Number of matches (default: 5)\n- `minGoals`: Minimum goals (default: 2)\n- `minExcitementScore`: Min score 0-130 (default: 60)\n- `enrichSocial`: Add YouTube views (slower, default: false)\n\n**Use Case:** Daily highlight compilation\n\nRequires: FOOTBALL_API_KEY in .env"
+                    },
+                    "response": []
+                },
+                {
+                    "name": "Get League Rounds",
+                    "request": {
+                        "method": "GET",
+                        "header": [],
+                        "url": {
+                            "raw": "{{baseUrl}}/api/v1/football/data/league/39/rounds?season=2023",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "v1",
+                                "football",
+                                "data",
+                                "league",
+                                "39",
+                                "rounds"
+                            ],
+                            "query": [
+                                {
+                                    "key": "season",
+                                    "value": "2024",
+                                    "description": "Season year (default: current year)"
+                                }
+                            ]
+                        },
+                        "description": "Get all available rounds for a league.\n\n**Example:**\n- Premier League (39): \"Regular Season - 1\", \"Regular Season - 2\", ...\n- Champions League (2): \"Group Stage - 1\", \"Round of 16\", ...\n\n**League IDs:**\n- 39 = Premier League\n- 140 = La Liga\n- 78 = Bundesliga\n- 135 = Serie A\n- 61 = Ligue 1"
+                    },
+                    "response": []
+                },
+                {
+                    "name": "Get League Round Matches",
+                    "request": {
+                        "method": "GET",
+                        "header": [],
+                        "url": {
+                            "raw": "{{baseUrl}}/api/v1/football/data/league/39/round/Regular Season - 18?season=2023",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "v1",
+                                "football",
+                                "data",
+                                "league",
+                                "39",
+                                "round",
+                                "Regular Season - 18"
+                            ],
+                            "query": [
+                                {
+                                    "key": "season",
+                                    "value": "2024",
+                                    "description": "Season year"
+                                }
+                            ]
+                        },
+                        "description": "Get all finished matches from a specific league round.\n\n**Examples:**\n- Premier League Round 18: `/league/39/round/Regular Season - 18`\n- La Liga Round 15: `/league/140/round/Regular Season - 15`\n- Champions League: `/league/2/round/Round of 16`\n\nNote: URL encode the round name (spaces become %20)"
+                    },
+                    "response": []
+                },
+                {
+                    "name": "Get League Round Best Matches",
+                    "request": {
+                        "method": "GET",
+                        "header": [],
+                        "url": {
+                            "raw": "{{baseUrl}}/api/v1/football/data/league/39/round/Regular Season - 18/ranked?season=2023&limit=3&minGoals=2&enrichSocial=true",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "v1",
+                                "football",
+                                "data",
+                                "league",
+                                "39",
+                                "round",
+                                "Regular Season - 18",
+                                "ranked"
+                            ],
+                            "query": [
+                                {
+                                    "key": "season",
+                                    "value": "2024",
+                                    "description": "Season year"
+                                },
+                                {
+                                    "key": "limit",
+                                    "value": "3",
+                                    "description": "Number of matches to return"
+                                },
+                                {
+                                    "key": "minGoals",
+                                    "value": "2",
+                                    "description": "Minimum goals required"
+                                },
+                                {
+                                    "key": "enrichSocial",
+                                    "value": "true",
+                                    "description": "Fetch YouTube engagement"
+                                }
+                            ]
+                        },
+                        "description": "Get the best matches from a specific league round, ranked by excitement.\n\n**Use Case:** Weekly league roundup\n\n**Example Workflow:**\n1. Get rounds: `/league/39/rounds`\n2. Pick latest round\n3. Get best matches: `/league/39/round/{latest}/ranked?limit=5`\n4. Download highlights from YouTube\n5. Create compilation video\n\nRequires: FOOTBALL_API_KEY in .env"
+                    },
+                    "response": []
+                }
+            ],
+            "description": "Real Football Data - Fetch actual match data from API-Football. Requires FOOTBALL_API_KEY in .env (free tier: 100 requests/day). Use these endpoints to get real match statistics, scores, and details from any league."
+        },
+        {
+            "name": "football-scraping",
+            "item": [
+                {
+                    "name": "Get FotMob League IDs",
+                    "request": {
+                        "method": "GET",
+                        "header": [],
+                        "url": {
+                            "raw": "{{baseUrl}}/api/v1/football/scraper/leagues",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "v1",
+                                "football",
+                                "scraper",
+                                "leagues"
+                            ]
+                        },
+                        "description": "Get FotMob league IDs for web scraping.\n\n**FREE, NO API KEY, CURRENT DATA!**\n\nLeague IDs:\n- Premier League (47)\n- La Liga (87)\n- Bundesliga (54)\n- Serie A (55)\n- Ligue 1 (53)\n- Champions League (42)\n- Europa League (73)\n\nNo setup required - works immediately!"
+                    },
+                    "response": []
+                },
+                {
+                    "name": "Get Today's Matches (Scraped)",
+                    "request": {
+                        "method": "GET",
+                        "header": [],
+                        "url": {
+                            "raw": "{{baseUrl}}/api/v1/football/scraper/today",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "v1",
+                                "football",
+                                "scraper",
+                                "today"
+                            ]
+                        },
+                        "description": "Get all finished matches from today using FotMob web scraping.\n\n**Advantages:**\n- ✅ FREE (no API key)\n- ✅ CURRENT season data (2024-2025)\n- ✅ Works immediately\n- ✅ Basic match data\n\nUse enrichStats=true to get detailed statistics."
+                    },
+                    "response": []
+                },
+                {
+                    "name": "Get Today's Best Matches (Scraped + Ranked)",
+                    "request": {
+                        "method": "GET",
+                        "header": [],
+                        "url": {
+                            "raw": "{{baseUrl}}/api/v1/football/scraper/today/ranked?limit=5&minGoals=2&enrichStats=true&enrichSocial=true&minExcitementScore=60",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "v1",
+                                "football",
+                                "scraper",
+                                "today",
+                                "ranked"
+                            ],
+                            "query": [
+                                {
+                                    "key": "limit",
+                                    "value": "5",
+                                    "description": "Number of matches to return (default: 5)"
+                                },
+                                {
+                                    "key": "minGoals",
+                                    "value": "2",
+                                    "description": "Minimum goals required (default: 2)"
+                                },
+                                {
+                                    "key": "enrichStats",
+                                    "value": "true",
+                                    "description": "Fetch detailed stats from FotMob (slower)"
+                                },
+                                {
+                                    "key": "enrichSocial",
+                                    "value": "true",
+                                    "description": "Fetch YouTube views/engagement (slower)"
+                                },
+                                {
+                                    "key": "minExcitementScore",
+                                    "value": "60",
+                                    "description": "Minimum excitement score 0-130 (default: 60)"
+                                }
+                            ]
+                        },
+                        "description": "Get today's most exciting matches from FotMob, ranked by algorithm.\n\n**BEST ENDPOINT FOR DAILY HIGHLIGHTS!**\n\n**Parameters:**\n- `limit`: Number of matches (default: 5)\n- `minGoals`: Minimum goals (default: 2)\n- `minExcitementScore`: Min score 0-130 (default: 60)\n- `enrichStats`: Fetch detailed match stats (default: false)\n- `enrichSocial`: Add YouTube views (default: false)\n\n**Use Case:** Daily highlight compilation with CURRENT data\n\n**No API key required!**"
+                    },
+                    "response": []
+                },
+                {
+                    "name": "Get Premier League Matches (Scraped)",
+                    "request": {
+                        "method": "GET",
+                        "header": [],
+                        "url": {
+                            "raw": "{{baseUrl}}/api/v1/football/scraper/league/47",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "v1",
+                                "football",
+                                "scraper",
+                                "league",
+                                "47"
+                            ]
+                        },
+                        "description": "Get all finished Premier League matches from FotMob.\n\n**League IDs:**\n- 47 = Premier League\n- 87 = La Liga\n- 54 = Bundesliga\n- 55 = Serie A\n- 53 = Ligue 1\n- 42 = Champions League\n- 73 = Europa League\n\nReturns recent finished matches from the current season."
+                    },
+                    "response": []
+                },
+                {
+                    "name": "Get Premier League Best Matches (Scraped + Ranked)",
+                    "request": {
+                        "method": "GET",
+                        "header": [],
+                        "url": {
+                            "raw": "{{baseUrl}}/api/v1/football/scraper/league/47/ranked?limit=5&minGoals=2&enrichStats=true&enrichSocial=false",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "v1",
+                                "football",
+                                "scraper",
+                                "league",
+                                "47",
+                                "ranked"
+                            ],
+                            "query": [
+                                {
+                                    "key": "limit",
+                                    "value": "5",
+                                    "description": "Number of matches to return"
+                                },
+                                {
+                                    "key": "minGoals",
+                                    "value": "2",
+                                    "description": "Minimum goals required"
+                                },
+                                {
+                                    "key": "enrichStats",
+                                    "value": "true",
+                                    "description": "Fetch detailed match statistics"
+                                },
+                                {
+                                    "key": "enrichSocial",
+                                    "value": "false",
+                                    "description": "Fetch YouTube engagement"
+                                }
+                            ]
+                        },
+                        "description": "Get the best Premier League matches, ranked by excitement.\n\n**Use Case:** Weekly Premier League highlight compilation\n\n**Example for other leagues:**\n- La Liga: `/scraper/league/87/ranked`\n- Bundesliga: `/scraper/league/54/ranked`\n- Serie A: `/scraper/league/55/ranked`\n- Champions League: `/scraper/league/42/ranked`\n\n**No API key required!**"
+                    },
+                    "response": []
+                },
+                {
+                    "name": "Get La Liga Best Matches",
+                    "request": {
+                        "method": "GET",
+                        "header": [],
+                        "url": {
+                            "raw": "{{baseUrl}}/api/v1/football/scraper/league/87/ranked?limit=3&enrichStats=true",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "v1",
+                                "football",
+                                "scraper",
+                                "league",
+                                "87",
+                                "ranked"
+                            ],
+                            "query": [
+                                {
+                                    "key": "limit",
+                                    "value": "3",
+                                    "description": "Top 3 matches"
+                                },
+                                {
+                                    "key": "enrichStats",
+                                    "value": "true",
+                                    "description": "Get detailed statistics"
+                                }
+                            ]
+                        },
+                        "description": "Get top 3 La Liga matches with detailed stats.\n\nPerfect for creating \"Best of La Liga\" compilations."
+                    },
+                    "response": []
+                },
+                {
+                    "name": "Get Champions League Best Matches",
+                    "request": {
+                        "method": "GET",
+                        "header": [],
+                        "url": {
+                            "raw": "{{baseUrl}}/api/v1/football/scraper/league/42/ranked?limit=5&minGoals=3&enrichStats=true",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "v1",
+                                "football",
+                                "scraper",
+                                "league",
+                                "42",
+                                "ranked"
+                            ],
+                            "query": [
+                                {
+                                    "key": "limit",
+                                    "value": "5",
+                                    "description": "Top 5 matches"
+                                },
+                                {
+                                    "key": "minGoals",
+                                    "value": "3",
+                                    "description": "Only high-scoring matches"
+                                },
+                                {
+                                    "key": "enrichStats",
+                                    "value": "true",
+                                    "description": "Detailed statistics"
+                                }
+                            ]
+                        },
+                        "description": "Get the best Champions League matches.\n\nPerfect for \"UCL Best Goals\" compilations."
+                    },
+                    "response": []
+                }
+            ],
+            "description": "Football Web Scraping (FotMob) - Get CURRENT season data (2024-2025) for FREE! No API key required. Scrapes match data from FotMob's public API. Perfect for daily highlights and current season content."
         }
     ],
     "variable": [

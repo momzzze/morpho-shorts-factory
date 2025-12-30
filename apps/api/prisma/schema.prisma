@@ -34,29 +34,47 @@ model User {
 model Video {
   id               String      @id @default(cuid())
   userId           String
-  sourceUrl        String
-  sourceSize       BigInt
-  originalName     String?
+  
+  // Video metadata
+  title            String
+  description      String?
+  niche            String      // e.g., "football", "crafting", "gaming"
+  
+  // Processing status
   status           VideoStatus @default(PENDING)
   processingTaskId String?
-  outputUrl        String?
+  error            String?
+  progress         Int         @default(0)
+  
+  // Storage paths (GCS or local)
+  gcsPath          String?     // e.g., "users/john123/compilations/video-abc.mp4"
+  outputUrl        String?     // Full URL when ready
   thumbnailUrl     String?
+  
+  // Source videos (scraped TikToks)
+  sourceVideos     Json?       // Array of {url, title, author, etc.}
+  sourceUrl        String?     // Legacy field for single video uploads
+  sourceSize       BigInt?
+  originalName     String?
+  
+  // Video properties
   duration         Int?
   width            Int?
   height           Int?
   codec            String?
-  title            String?
-  description      String?
   metadata         Json?
-  error            String?
+  
+  // Timestamps
   createdAt        DateTime    @default(now())
   updatedAt        DateTime    @updatedAt
   completedAt      DateTime?
+  
   users            User        @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([createdAt])
   @@index([status])
   @@index([userId, status])
+  @@index([niche])
   @@map("videos")
 }
 

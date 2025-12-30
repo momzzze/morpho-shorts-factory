@@ -89,6 +89,45 @@ Task
 
 ---
 
+## Features
+
+### ⚽ Football Match Intelligence (NEW!)
+
+Smart algorithm for finding the most exciting football matches and extracting highlights:
+
+- **Match Scoring**: Ranks matches 0-130 points based on goals, action, drama, social engagement
+- **Highlight Detection**: AI-powered detection of goals, saves, cards, penalties
+- **Auto Compilation**: Download highlights from YouTube/TikTok and create compilations
+- **Sport-Agnostic**: Works for any sport (basketball, hockey, rugby, etc.)
+
+**Quick Start:**
+
+```bash
+# Test the full pipeline
+curl http://localhost:5001/api/v1/football/full-pipeline
+
+# Generate demo matches
+curl http://localhost:5001/api/v1/football/demo-matches?count=20
+```
+
+📖 **Docs**: [Football Highlights Guide](docs/FOOTBALL_QUICK_START.md)
+
+### 📹 Video Processing Pipeline
+
+- YouTube & TikTok video scraping
+- Google Cloud Storage integration
+- FFmpeg-based video processing (planned)
+- Multi-quality output support
+
+### 🔐 Authentication & User Management
+
+- JWT-based authentication
+- User tiers (FREE, PREMIUM, ENTERPRISE)
+- Storage quota management
+- Protected API routes
+
+---
+
 ## Development Setup
 
 ```bash

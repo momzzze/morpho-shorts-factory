@@ -21,6 +21,19 @@ const envSchema = z.object({
 
   // JWT authentication
   JWT_SECRET: z.string().min(32, 'JWT_SECRET must be at least 32 characters'),
+
+  // Google Cloud Storage
+  STORAGE_DRIVER: z.enum(['local', 'gcs']).optional().default('local'),
+  GCS_PROJECT_ID: z.string().optional(),
+  GCS_BUCKET_NAME: z.string().optional(),
+  GCS_CREDENTIALS_PATH: z.string().optional(),
+
+  // RapidAPI - TikTok API
+  RAPIDAPI_KEY: z.string().optional(),
+  RAPIDAPI_HOST: z.string().optional().default('tiktok-api123.p.rapidapi.com'),
+  // YouTube Data API
+  YOUTUBE_API_KEY: z.string().optional(),
+  FOOTBALL_API_KEY: z.string().optional(),
 });
 
 const parsed = envSchema.safeParse(process.env);
