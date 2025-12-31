@@ -27,12 +27,15 @@ export class FootballScraperService {
    * Doesn't require authentication, just HTTP requests
    */
   async getFotMobMatches(date?: string): Promise<any[]> {
-    const targetDate = date || new Date().toISOString().split('T')[0]; // YYYY-MM-DD
+    // Use yesterday's date by default (more likely to have finished matches)
+    const yesterday = new Date();
+    yesterday.setDate(yesterday.getDate() - 1);
+    const targetDate = date || yesterday.toISOString().split('T')[0]; // YYYY-MM-DD
 
     try {
       const url = `https://www.fotmob.com/api/matches?date=${targetDate}`;
 
-      logger.info({ url }, 'Fetching from FotMob API');
+      logger.info({ url, targetDate }, 'Fetching from FotMob API');
 
       const response = await fetch(url, {
         headers: {
@@ -43,13 +46,27 @@ export class FootballScraperService {
       });
 
       if (!response.ok) {
-        throw new Error(`FotMob API error: ${response.status}`);
+        const errorText = await response.text();
+        logger.warn(
+          {
+            status: response.status,
+            targetDate,
+            errorText: errorText.substring(0, 200),
+          },
+          'FotMob date API returned error'
+        );
+        throw new Error(
+          `FotMob API error: ${response.status} - ${errorText.substring(
+            0,
+            100
+          )}`
+        );
       }
 
       const data = await response.json();
       return data.leagues || [];
     } catch (error) {
-      logger.error({ error }, 'Failed to fetch from FotMob');
+      logger.error({ error, targetDate }, 'Failed to fetch from FotMob');
       throw error;
     }
   }
@@ -110,6 +127,75 @@ export class FootballScraperService {
 
     logger.info({ count: matches.length }, 'Fetched matches from FotMob');
     return matches;
+  }
+
+  /**
+   * Get highlight video URLs from FotMob match details or YouTube search
+   */
+  async getMatchHighlightVideos(matchId: string): Promise<{
+    youtube?: string;
+    other?: string[];
+  }> {
+    try {
+      const { data } = await this.getMatchDetails(matchId);
+
+      const videos: { youtube?: string; other?: string[] } = {};
+
+      // FotMob doesn't provide direct video URLs in their API
+      // We'll return match metadata that can be used to search YouTube
+      const matchInfo = {
+        homeTeam: data.header?.teams?.[0]?.name,
+        awayTeam: data.header?.teams?.[1]?.name,
+        date: data.general?.matchTimeUTCDate,
+      };
+
+      logger.info(
+        { matchId, matchInfo },
+        'FotMob does not provide direct video URLs - use YouTube search instead'
+      );
+
+      return videos;
+    } catch (error) {
+      logger.error({ matchId, error }, 'Failed to get match details');
+      throw error;
+    }
+  }
+
+  /**
+   * Search YouTube for match highlights
+   */
+  async searchYouTubeHighlights(
+    homeTeam: string,
+    awayTeam: string,
+    league: string = 'Premier League'
+  ): Promise<string | null> {
+    try {
+      // Import YouTubeService dynamically to avoid circular dependencies
+      const { youtubeService } = await import('./youtubeService.js');
+
+      // Search for official highlights
+      const searchQuery = `${homeTeam} vs ${awayTeam} highlights ${league}`;
+      const videos = await youtubeService.searchRawFootage(searchQuery, 3);
+
+      if (videos.length > 0) {
+        // Return the first result (most relevant)
+        const videoUrl = `https://www.youtube.com/watch?v=${videos[0].videoId}`;
+        logger.info(
+          { homeTeam, awayTeam, videoUrl, title: videos[0].title },
+          'Found YouTube highlights'
+        );
+        return videoUrl;
+      }
+
+      logger.warn({ homeTeam, awayTeam }, 'No YouTube highlights found');
+      return null;
+    } catch (error) {
+      logger.error(
+        { homeTeam, awayTeam, error },
+        'Failed to search YouTube highlights'
+      );
+      return null;
+    }
   }
 
   /**
