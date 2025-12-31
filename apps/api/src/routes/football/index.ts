@@ -1,29 +1,29 @@
 // ==============================================================================
-// Football Routes - Match selection and highlight extraction
+// Football Routes - Get highlights and submit for AI processing
 // ==============================================================================
 
 import { Router } from 'express';
 import {
-  rankMatches,
-  detectHighlights,
-  getDemoMatches,
-  fullPipeline,
+  getMatchesWithHighlights,
+  processHighlightsWithAI,
 } from '../../controllers/footballController.js';
-import footballDataRouter from '../football-data/index.js';
-import footballScraperRouter from '../football-scraper/index.js';
 
 const router = Router();
 
-// Web scraping endpoints (FREE, CURRENT DATA!)
-router.use('/scraper', footballScraperRouter);
+/**
+ * GET /api/v1/football/highlights?league=47
+ * Get highlight suggestions with YouTube videos
+ * Query params:
+ *   - league: 47 (Premier League), 87 (La Liga), 54 (Bundesliga), 55 (Serie A), 53 (Ligue 1), 42 (Champions League)
+ *   - limit: 5 (default), max videos to return
+ */
+router.get('/highlights', getMatchesWithHighlights);
 
-// Real data endpoints (from external APIs - requires API key)
-router.use('/data', footballDataRouter);
-
-// Demo/testing endpoints
-router.post('/rank-matches', rankMatches);
-router.post('/detect-highlights', detectHighlights);
-router.get('/demo-matches', getDemoMatches);
-router.get('/full-pipeline', fullPipeline);
+/**
+ * POST /api/v1/football/process
+ * Submit video highlights to AI service for processing
+ * Body: { videoUrl, teams, score, stats, breakdown }
+ */
+router.post('/process', processHighlightsWithAI);
 
 export default router;
