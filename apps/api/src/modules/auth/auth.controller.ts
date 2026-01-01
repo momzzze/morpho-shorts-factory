@@ -1,8 +1,8 @@
 import { Request, Response } from 'express';
 import { z } from 'zod';
-import { AuthService } from '../services/authService.js';
-import { asyncHandler } from '../asyncHandler.js';
-import { validateRequest } from '../utils/validation.js';
+import { AuthService } from '../../services/authService.js';
+import { asyncHandler } from '../../asyncHandler.js';
+import { validateRequest } from '../../utils/validation.js';
 
 // Validation schemas
 const registerSchema = z.object({

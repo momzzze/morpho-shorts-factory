@@ -1,9 +1,5 @@
-// ==============================================================================
-// Message Controller - Handles HTTP requests for messaging
-// ==============================================================================
-
 import { Request, Response } from 'express';
-import { messageService } from '../services/messageService.js';
+import { messageService } from '../../services/messageService.js';
 
 export class MessageController {
   async sendTask(req: Request, res: Response): Promise<void> {
@@ -105,5 +101,4 @@ export class MessageController {
   }
 }
 
-// Export a singleton instance
 export const messageController = new MessageController();

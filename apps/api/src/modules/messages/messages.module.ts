@@ -1,29 +1,30 @@
-// ==============================================================================
-// Messages Routes - Routes for sending messages to RabbitMQ
-// ==============================================================================
-
 import { Router } from 'express';
-import { messageController } from '../../controllers/messageController.js';
+import { messageController } from './messages.controller.js';
 import { asyncHandler } from '../../asyncHandler.js';
+import type { ApiModule } from '../module.types.js';
 
 const router = Router();
 
-// Send task message
+// POST /api/v1/messages/task
 router.post(
   '/task',
   asyncHandler(messageController.sendTask.bind(messageController))
 );
 
-// Send video upload message
+// POST /api/v1/messages/video
 router.post(
   '/video',
   asyncHandler(messageController.sendVideo.bind(messageController))
 );
 
-// Send thumbnail generation message
+// POST /api/v1/messages/thumbnail
 router.post(
   '/thumbnail',
   asyncHandler(messageController.sendThumbnail.bind(messageController))
 );
 
-export default router;
+export const messagesModule: ApiModule = {
+  name: 'messages',
+  basePath: '/messages',
+  router,
+};

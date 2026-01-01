@@ -161,6 +161,51 @@ docker run -d --name rabbitmq -p 5672:5672 -p 15672:15672 rabbitmq:3-management
 
 ## Project-Specific Conventions
 
+### Module System (API) - MIGRATION IN PROGRESS
+
+API is transitioning to **modular architecture** with `ApiModule` pattern. Each module is self-contained:
+
+```typescript
+// apps/api/src/modules/football/football.module.ts
+export const footballModule: ApiModule = {
+  name: 'football',
+  basePath: '/football', // Prefixed with /api/v1 by router
+  router: Router(),
+};
+```
+
+**Module Structure:**
+
+```
+modules/[name]/
+  ├── [name].module.ts      # ApiModule export with router
+  ├── [name].controller.ts  # Route handlers
+  ├── [name].service.ts     # Business logic (NEW PATTERN)
+  ├── [name].repo.ts        # Database access (NEW PATTERN)
+  └── [name].adapter.ts     # External API adapters (NEW PATTERN)
+```
+
+**Import Path Rules - CRITICAL:**
+
+- Shared utilities from root: `import { asyncHandler } from '../../asyncHandler.js'`
+- Services in same module: `import { footballService } from './football.service.js'`
+- Old pattern (being phased out): `import { AuthService } from '../../services/authService.js'`
+
+**Current Status:**
+
+- ✅ `football` module: Fully migrated (service/repo/adapter pattern)
+- ⚠️ `auth` module: Has incorrect import paths (needs fixing)
+- ⚠️ `messages`, `videos`: Using old controller → service pattern
+
+**To add a new module:**
+
+1. Create folder in `apps/api/src/modules/[name]/`
+2. Create `[name].service.ts` for business logic
+3. Create `[name].controller.ts` with route handlers
+4. Export `[name].module.ts` with `ApiModule` structure
+5. Register in `apps/api/src/modules/index.ts` array
+6. Auto-mounted by `registerModules()` in main router
+
 ### Error Handling
 
 All API errors use [ApiError class](apps/api/src/errors.ts):
@@ -169,39 +214,60 @@ All API errors use [ApiError class](apps/api/src/errors.ts):
 throw new ApiError('Not found', { statusCode: 404, code: 'NOT_FOUND' });
 ```
 
+**asyncHandler Pattern** - REQUIRED for all async route handlers:
+
+```typescript
+import { asyncHandler } from '../asyncHandler.js';
+
+router.get(
+  '/endpoint',
+  asyncHandler(async (req, res, next) => {
+    // Automatically catches errors and passes to error middleware
+    const data = await someAsyncOperation();
+    res.json(data);
+  })
+);
+```
+
 Centralized error middleware in [apps/api/src/index.ts](apps/api/src/index.ts#L47-L70) handles both `ApiError` and unexpected errors with request ID tracking.
 
 ### Environment Variables
 
-- Use [Zod schemas](apps/api/src/env.ts) for validation
-- Required: `PORT` (defaults to 5001), `RABBIT_URL`, `YOUTUBE_API_KEY`
-- Optional: `CORS_ORIGINS` (comma-separated), `DATABASE_URL`, `GCS_*` for storage
+- Use [Zod schemas](apps/api/src/env.ts) for validation - **all env vars MUST be defined here**
+- Loaded via `dotenv` before schema validation (see `env.ts`)
+- Required: `PORT` (defaults to 5001), `JWT_SECRET` (min 32 chars), `DATABASE_URL`
+- Optional: `RABBIT_URL`, `YOUTUBE_API_KEY`, `CORS_ORIGINS` (comma-separated), `GCS_*` for storage
+- Access via: `import { env } from './env.js'`
 
 ### Logging
 
 - API uses **pino** with HTTP request logging ([httpLogger.ts](apps/api/src/httpLogger.ts))
 - Every request gets a unique `requestId` ([middleware/requestId.ts](apps/api/src/middleware/requestId.ts))
 - Python service uses standard `logging` module
+- Log format: `logger.info({ context }, 'message')`
 
 ### TypeScript Configuration
 
-- All apps use `"type": "module"` (ES modules)
-- Dev: `tsx` for running TypeScript directly
+- All apps use `"type": "module"` (ES modules) - **CRITICAL**
+- Dev: `tsx` for running TypeScript directly (`nodemon --exec tsx`)
 - Build: `tsc` compiles to `dist/`
-- Import paths must include `.js` extension: `import { x } from './file.js'`
+- Import paths **MUST include `.js` extension**: `import { x } from './file.js'`
+- This is a Node.js ES modules requirement, not a TypeScript limitation
 
 ## Adding New Features
 
-### Add New Football Endpoint
+### Add New Football Endpoint (Use Modular Pattern)
 
-1. Add method to [footballScraperService.ts](apps/api/src/services/footballScraperService.ts)
-2. Add handler to [footballController.ts](apps/api/src/controllers/footballController.ts)
-3. Register in [routes/football/index.ts](apps/api/src/routes/football/index.ts)
-4. Update [postman-auth-collection.json](apps/api/postman-auth-collection.json)
+Follow the "Adding a New API Endpoint (NEW MODULAR PATTERN)" section above. For football-specific features:
+
+1. Add method to `apps/api/src/modules/football/football.service.ts`
+2. Add handler to `apps/api/src/modules/football/football.controller.ts`
+3. Register route in `apps/api/src/modules/football/football.module.ts`
+4. Update Postman collection if needed
 
 ### Send to AI Service
 
-1. Use [RabbitMQ producer](apps/api/src/rabbitmq/producer.ts):
+1. Use RabbitMQ producer:
 
    ```typescript
    await producer.sendMessage('video.process', { videoUrl, metadata });
@@ -279,13 +345,58 @@ class VideoEditor:
 
 ## Common Patterns
 
-### Adding a New API Endpoint
+### Adding a New API Endpoint (NEW MODULAR PATTERN)
 
-1. Create route in [apps/api/src/routes/](apps/api/src/routes/) (e.g., `messages/index.ts`)
-2. Add controller in [apps/api/src/controllers/](apps/api/src/controllers/)
-3. Use `asyncHandler` wrapper: `asyncHandler(async (req, res) => {...})`
-4. Validation: Zod schemas in [apps/api/src/utils/validation.ts](apps/api/src/utils/validation.ts)
-5. Register route in [apps/api/src/routes/index.ts](apps/api/src/routes/index.ts)
+1. **Create module structure** in `apps/api/src/modules/[name]/`:
+
+   ```typescript
+   // [name].service.ts - Business logic layer
+   export const myModuleService = {
+     async getData() {
+       // Business logic here
+     },
+   };
+   ```
+
+2. **Create controller** with `asyncHandler` wrapper (REQUIRED):
+
+   ```typescript
+   // [name].controller.ts
+   import { Request, Response } from 'express';
+   import { asyncHandler } from '../../asyncHandler.js'; // CORRECT PATH
+   import { ApiError } from '../../errors.js';
+   import { myModuleService } from './[name].service.js';
+
+   export const getMyData = asyncHandler(
+     async (req: Request, res: Response) => {
+       const data = await myModuleService.getData();
+       res.json(data);
+     }
+   );
+   ```
+
+3. **Create module** with Express Router:
+
+   ```typescript
+   // [name].module.ts
+   import { Router } from 'express';
+   import { getMyData } from './[name].controller.js';
+   import type { ApiModule } from '../module.types.js';
+
+   const router = Router();
+   router.get('/data', getMyData);
+
+   export const myModule: ApiModule = {
+     name: 'my-feature',
+     basePath: '/my-feature', // Results in /api/v1/my-feature
+     router,
+   };
+   ```
+
+4. **Register** in `apps/api/src/modules/index.ts` array
+5. **Validation**: Use Zod schemas inline in controller (see football.controller.ts)
+
+**Reference Implementation:** See `modules/football/` for complete example
 
 ### Adding a New Worker Task Type
 
@@ -293,12 +404,31 @@ class VideoEditor:
 2. Update [apps/worker/src/index.ts](apps/worker/src/index.ts#L32-L41) handler switch statement
 3. Create dedicated handler function following existing pattern
 
+### Database Schema Changes (Prisma)
+
+**Development workflow:**
+
+```bash
+# Make changes to apps/api/prisma/schema.prisma
+pnpm --filter api db:push     # Push to dev DB (fast, no migration)
+pnpm --filter api db:studio   # Open Prisma Studio to verify
+```
+
+**Production workflow:**
+
+```bash
+pnpm --filter api db:migrate        # Create migration
+pnpm --filter api db:migrate:deploy # Deploy to production
+```
+
 ### Storage Strategy
 
-Uses **pluggable storage abstraction**:
+Uses **pluggable storage abstraction** via `STORAGE_DRIVER` env var:
 
-```env
-STORAGE_DRIVER=local | s3
+```typescript
+// apps/api/src/services/gcsService.ts
+STORAGE_DRIVER=local   # Dev: local filesystem
+STORAGE_DRIVER=gcs     # Prod: Google Cloud Storage
 ```
 
 Supports local filesystem (dev) or S3-compatible storage (production).
@@ -393,10 +523,76 @@ Matches are returned sorted by this score, so frontend shows most exciting first
 - [docs/FOOTBALL_HIGHLIGHTS.md](docs/FOOTBALL_HIGHLIGHTS.md): Football-specific implementation
 - [docs/FOOTBALL_QUICK_START.md](docs/FOOTBALL_QUICK_START.md): Getting started with football API
 
+## Web Application (apps/web)
+
+### Architecture
+
+- **Framework**: React 18 + TypeScript
+- **Router**: TanStack Router (file-based routing)
+- **Build Tool**: Vite 6
+- **Styling**: Tailwind CSS v4 + shadcn/ui components
+- **Theme System**: 11 custom themes with light/dark mode
+
+### Theme System
+
+**Location**: [apps/web/src/theme/](apps/web/src/theme/)
+
+Uses React Context with localStorage persistence:
+
+```tsx
+import { useTheme } from './theme';
+
+function MyComponent() {
+  const { theme, mode, tokens, setTheme, toggleMode } = useTheme();
+
+  return (
+    <div style={{ backgroundColor: tokens.bg, color: tokens.fg }}>
+      <h1 style={{ color: tokens.primary }}>Hello!</h1>
+      <button onClick={toggleMode}>Toggle Mode</button>
+    </div>
+  );
+}
+```
+
+**Available themes**: synth, emerald, sunset, ocean, midnight, rose, lavender, forest, desert, arctic, volcano
+
+**Tokens**: `bg`, `fg`, `surface`, `border`, `primary`, `secondary`, `danger`, `warning`, `success`
+
+See [apps/web/THEME_GUIDE.md](apps/web/THEME_GUIDE.md) for complete guide.
+
+### Routing
+
+Uses TanStack Router with file-based routes:
+
+- `src/routes/__root.tsx` - Root layout
+- `src/routes/_app.tsx` - App layout (with Header/Sidebar)
+- `src/routes/index.tsx` - Home page
+- Route tree auto-generated in `routeTree.gen.ts`
+
+### Development
+
+```bash
+pnpm dev:web       # Start dev server (http://localhost:5173)
+pnpm build:web     # Build for production
+pnpm preview:web   # Preview production build
+```
+
+### shadcn/ui Components
+
+Uses [shadcn/ui](https://ui.shadcn.com/) components in `src/components/ui/`:
+
+```bash
+# Add new component (from apps/web):
+npx shadcn@latest add button
+```
+
+Components are customized to work with the Morpho theme system.
+
 ## Critical Context
 
 - **Package Manager**: Must use `pnpm` (v10.26.1) - enforced by packageManager field
 - **API Port**: API defaults to port 5001 (not 3000)
+- **Web Port**: Web dev server runs on port 5173 (Vite default)
 - **RabbitMQ**: Services gracefully handle missing RabbitMQ (logs warning, continues)
 - **Video Pipeline**: FFmpeg is core dependency for video processing via AI Service (Python)
 - **Kubernetes**: Local dev uses k3d, not Docker Desktop Kubernetes
