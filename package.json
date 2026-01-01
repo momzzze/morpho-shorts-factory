@@ -6,6 +6,9 @@
   ],
   "scripts": {
     "dev:api": "pnpm --filter api dev",
-    "dev:worker": "pnpm --filter worker dev"
+    "dev:worker": "pnpm --filter worker dev",
+    "dev:web": "pnpm --filter web dev",
+    "build:web": "pnpm --filter web build",
+    "preview:web": "pnpm --filter web preview"
   }
 }
