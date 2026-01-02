@@ -8,6 +8,7 @@ import { logger } from './logger.js';
 import { requestIdMiddleware } from './middleware/requestId.js';
 import { isAppError } from './errors.js';
 import { initializeRabbitMQ } from './rabbitmq/setup.js';
+import { initRedis, closeRedis } from './lib/redis.js';
 
 const app = express();
 
@@ -75,6 +76,13 @@ app.use((err: any, req: any, res: any, _next: any) => {
 app.listen(env.PORT, async () => {
   logger.info({ port: env.PORT, env: env.NODE_ENV }, 'API server running');
 
+  // Initialize Redis
+  try {
+    await initRedis();
+  } catch (error) {
+    logger.warn({ error }, 'Failed to initialize Redis, caching disabled');
+  }
+
   // Initialize RabbitMQ and start consuming messages
   try {
     await initializeRabbitMQ();
@@ -84,4 +92,17 @@ app.listen(env.PORT, async () => {
       'Failed to initialize RabbitMQ, continuing without it'
     );
   }
+});
+
+// Graceful shutdown
+process.on('SIGTERM', async () => {
+  logger.info('SIGTERM received, shutting down gracefully');
+  await closeRedis();
+  process.exit(0);
+});
+
+process.on('SIGINT', async () => {
+  logger.info('SIGINT received, shutting down gracefully');
+  await closeRedis();
+  process.exit(0);
 });

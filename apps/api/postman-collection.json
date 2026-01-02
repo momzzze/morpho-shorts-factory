@@ -1,0 +1,380 @@
+{
+    "info": {
+        "name": "Morpho API - SIMPLIFIED",
+        "_postman_id": "morpho-api-simplified",
+        "description": "Simplified Morpho API: Just 2 stock endpoints + Football + Auth + Health",
+        "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+    },
+    "variable": [
+        {
+            "key": "baseUrl",
+            "value": "http://localhost:5001",
+            "type": "string"
+        },
+        {
+            "key": "authToken",
+            "value": "",
+            "type": "string"
+        }
+    ],
+    "item": [
+        {
+            "name": "Stocks Module - WITH DATABASE",
+            "item": [
+                {
+                    "name": "1. List All Saved Companies",
+                    "request": {
+                        "method": "GET",
+                        "header": [],
+                        "url": {
+                            "raw": "{{baseUrl}}/api/v1/stocks/list",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "v1",
+                                "stocks",
+                                "list"
+                            ]
+                        },
+                        "description": "List all companies with saved fundamentals in database."
+                    }
+                },
+                {
+                    "name": "2. Get Company Info",
+                    "request": {
+                        "method": "GET",
+                        "header": [],
+                        "url": {
+                            "raw": "{{baseUrl}}/api/v1/stocks/AAPL/info",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "v1",
+                                "stocks",
+                                "AAPL",
+                                "info"
+                            ]
+                        },
+                        "description": "Get company name and CIK from SEC API."
+                    }
+                },
+                {
+                    "name": "3. Fetch & Save Fundamentals (AAPL)",
+                    "request": {
+                        "method": "GET",
+                        "header": [],
+                        "url": {
+                            "raw": "{{baseUrl}}/api/v1/stocks/AAPL/fundamentals",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "v1",
+                                "stocks",
+                                "AAPL",
+                                "fundamentals"
+                            ]
+                        },
+                        "description": "Fetch from SEC API and SAVE to database. View results in Prisma Studio!"
+                    }
+                },
+                {
+                    "name": "4. Fetch & Save Fundamentals (MSFT)",
+                    "request": {
+                        "method": "GET",
+                        "header": [],
+                        "url": {
+                            "raw": "{{baseUrl}}/api/v1/stocks/MSFT/fundamentals",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "v1",
+                                "stocks",
+                                "MSFT",
+                                "fundamentals"
+                            ]
+                        },
+                        "description": "Example: Fetch Microsoft and save to database."
+                    }
+                },
+                {
+                    "name": "5. Get Saved Data (AAPL)",
+                    "request": {
+                        "method": "GET",
+                        "header": [],
+                        "url": {
+                            "raw": "{{baseUrl}}/api/v1/stocks/AAPL/saved",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "v1",
+                                "stocks",
+                                "AAPL",
+                                "saved"
+                            ]
+                        },
+                        "description": "Get saved fundamentals from database (no SEC call)."
+                    }
+                }
+            ]
+        },
+        {
+            "name": "Football Module",
+            "item": [
+                {
+                    "name": "Get League Highlights",
+                    "request": {
+                        "method": "GET",
+                        "header": [],
+                        "url": {
+                            "raw": "{{baseUrl}}/api/v1/football/highlights?league=47&limit=100",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "v1",
+                                "football",
+                                "highlights"
+                            ],
+                            "query": [
+                                {
+                                    "key": "league",
+                                    "value": "47",
+                                    "description": "47=Premier, 87=LaLiga, 54=Bundesliga, 55=SerieA, 53=Ligue1, 42=Champions"
+                                },
+                                {
+                                    "key": "limit",
+                                    "value": "100"
+                                }
+                            ]
+                        },
+                        "description": "Get ALL finished matches from a league with YouTube videos"
+                    }
+                },
+                {
+                    "name": "Submit for AI Processing",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n  \"videoUrl\": \"https://www.youtube.com/watch?v=FAEgFRMeH_E\",\n  \"homeTeam\": \"Brentford\",\n  \"awayTeam\": \"AFC Bournemouth\",\n  \"score\": \"4-1\"\n}"
+                        },
+                        "url": {
+                            "raw": "{{baseUrl}}/api/v1/football/process",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "v1",
+                                "football",
+                                "process"
+                            ]
+                        },
+                        "description": "Submit highlight video to AI service for processing"
+                    }
+                }
+            ]
+        },
+        {
+            "name": "Auth",
+            "item": [
+                {
+                    "name": "Register",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n  \"email\": \"test@example.com\",\n  \"password\": \"testPassword123\",\n  \"username\": \"testuser\",\n  \"displayName\": \"Test User\"\n}"
+                        },
+                        "url": {
+                            "raw": "{{baseUrl}}/api/v1/auth/register",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "v1",
+                                "auth",
+                                "register"
+                            ]
+                        }
+                    }
+                },
+                {
+                    "name": "Login",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n  \"email\": \"test@example.com\",\n  \"password\": \"testPassword123\"\n}"
+                        },
+                        "url": {
+                            "raw": "{{baseUrl}}/api/v1/auth/login",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "v1",
+                                "auth",
+                                "login"
+                            ]
+                        }
+                    }
+                },
+                {
+                    "name": "Get Profile",
+                    "request": {
+                        "method": "GET",
+                        "header": [
+                            {
+                                "key": "Authorization",
+                                "value": "Bearer {{authToken}}"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{baseUrl}}/api/v1/auth/me",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "v1",
+                                "auth",
+                                "me"
+                            ]
+                        },
+                        "description": "Get current user profile (protected)"
+                    }
+                }
+            ]
+        },
+        {
+            "name": "Health",
+            "item": [
+                {
+                    "name": "Live",
+                    "request": {
+                        "method": "GET",
+                        "url": {
+                            "raw": "{{baseUrl}}/api/v1/health/live",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "v1",
+                                "health",
+                                "live"
+                            ]
+                        },
+                        "description": "Liveness probe (pod is alive)"
+                    }
+                },
+                {
+                    "name": "Ready",
+                    "request": {
+                        "method": "GET",
+                        "url": {
+                            "raw": "{{baseUrl}}/api/v1/health/ready",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "v1",
+                                "health",
+                                "ready"
+                            ]
+                        },
+                        "description": "Readiness probe (dependencies OK)"
+                    }
+                }
+            ]
+        },
+        {
+            "name": "Testing",
+            "item": [
+                {
+                    "name": "TikTok Search",
+                    "request": {
+                        "method": "GET",
+                        "url": {
+                            "raw": "{{baseUrl}}/api/v1/test/tiktok/Paul%20Scholes?count=5",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "v1",
+                                "test",
+                                "tiktok",
+                                "Paul Scholes"
+                            ],
+                            "query": [
+                                {
+                                    "key": "count",
+                                    "value": "5"
+                                }
+                            ]
+                        }
+                    }
+                },
+                {
+                    "name": "YouTube Search",
+                    "request": {
+                        "method": "GET",
+                        "url": {
+                            "raw": "{{baseUrl}}/api/v1/test/youtube/football%20highlights?count=10",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "v1",
+                                "test",
+                                "youtube",
+                                "football highlights"
+                            ],
+                            "query": [
+                                {
+                                    "key": "count",
+                                    "value": "10"
+                                }
+                            ]
+                        }
+                    }
+                }
+            ]
+        }
+    ]
+}

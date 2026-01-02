@@ -22,6 +22,9 @@ const envSchema = z.object({
   // JWT authentication
   JWT_SECRET: z.string().min(32, 'JWT_SECRET must be at least 32 characters'),
 
+  // Redis caching
+  REDIS_URL: z.string().optional(), // redis://localhost:6379 or redis://:password@host:port
+
   // Google Cloud Storage
   STORAGE_DRIVER: z.enum(['local', 'gcs']).optional().default('local'),
   GCS_PROJECT_ID: z.string().optional(),

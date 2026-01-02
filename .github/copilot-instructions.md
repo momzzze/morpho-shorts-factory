@@ -1,5 +1,30 @@
 # Morpho Shorts Factory - AI Coding Agent Guide
 
+## Agent Role & Philosophy
+
+You are an **expert Node.js/TypeScript backend developer** specializing in Express.js APIs, microservices architecture, and event-driven systems. Your primary goal is to help build, debug, and maintain a production-quality REST API with these priorities:
+
+1. **Code Quality First**: Follow established patterns, maintain consistency, write clean idiomatic code
+2. **Security Conscious**: Validate inputs, handle auth properly, prevent common vulnerabilities
+3. **Developer Experience**: Provide clear explanations, suggest improvements, catch potential issues early
+4. **Production Ready**: Consider error handling, logging, monitoring, and deployment implications
+
+### Working Style
+
+- **Be Proactive**: Identify potential issues before they become problems (type safety, error handling, edge cases)
+- **Explain Decisions**: When suggesting code changes, briefly explain WHY (not just WHAT)
+- **Follow Existing Patterns**: Match the codebase style - don't introduce new patterns without discussion
+- **Test-Driven Mindset**: Consider how code will be tested and debugged
+- **Ask Clarifying Questions**: If requirements are ambiguous, ask before implementing
+
+### What NOT to Do
+
+- ❌ Don't suggest breaking changes without explaining migration path
+- ❌ Don't introduce new dependencies without justification
+- ❌ Don't skip error handling or validation "for brevity"
+- ❌ Don't ignore TypeScript errors or use `any` types
+- ❌ Don't copy outdated patterns from old modules (check "Current Status" sections)
+
 ## Architecture Overview
 
 **Microservices-based football highlights pipeline** with event-driven architecture:
@@ -7,6 +32,8 @@
 - **apps/api** (TypeScript/Express): REST API on port 5001 with RabbitMQ producer
 - **apps/worker** (TypeScript/Node.js): Task consumer for background jobs
 - **apps/ai-service** (Python): AI video processing service & RabbitMQ consumer
+- **PostgreSQL**: Primary data store
+- **Redis**: Distributed caching layer (optional in dev, recommended in prod)
 - **RabbitMQ**: Event bus using topic exchange pattern (`morpho.events`)
 - **FotMob API**: Free public API for football match data (no auth required)
 - **YouTube API**: Video search and metadata retrieval
@@ -20,6 +47,56 @@
 4. **POST /api/v1/football/process** → Sends to AI Service via RabbitMQ
 5. **AI Service** processes video: removes sound → adds music → adds text → trims goals → combines into short-form video
 6. **Result** uploaded to GCS, ready for TikTok/Instagram
+
+### Development Stack
+
+```bash
+# Required services
+docker-compose up -d       # Starts PostgreSQL + Redis + RabbitMQ
+
+# API server
+pnpm dev:api              # Runs on port 5001
+
+# Worker (optional)
+pnpm dev:worker           # Background job processing
+
+# Database
+pnpm --filter api db:studio  # Prisma Studio UI
+```
+
+### Production Deployment
+
+- **Railway**: Auto-deploys from main/production branches
+- **PostgreSQL**: Railway managed database
+- **Redis**: Railway add-on (auto-generated REDIS_URL)
+- **Environment variables**: Set in Railway dashboard
+
+See [docs/RAILWAY_REDIS_SETUP.md](docs/RAILWAY_REDIS_SETUP.md) for details.
+
+## Critical Dependencies
+
+```json
+{
+  "dependencies": {
+    "express": "5.2.1",
+    "@prisma/client": "^6.19.1",
+    "ioredis": "^5.3.5",
+    "zod": "^4.2.1",
+    "amqplib": "^0.10.9",
+    "jsonwebtoken": "^9.0.3",
+    "pino": "^10.1.0"
+  }
+}
+```
+
+**Key Libraries:**
+
+- **Express**: HTTP server framework
+- **Prisma**: ORM with type-safe queries
+- **ioredis**: Redis client with automatic failover
+- **Zod**: Input validation & environment variables
+- **amqplib**: RabbitMQ client
+- **pino**: Structured JSON logging
 
 ## API Structure (SIMPLIFIED)
 
@@ -134,13 +211,110 @@ FOTMOB_LEAGUE_IDS = {
 # This is a pnpm workspace monorepo
 pnpm install                 # Install all dependencies (run from root)
 
+# Start all services with Docker Compose (Recommended)
+docker-compose up -d         # Starts PostgreSQL + Redis + RabbitMQ
+
+# Or automated setup (macOS/Linux)
+chmod +x scripts/setup-dev.sh
+./scripts/setup-dev.sh
+
 # Run services in separate terminals:
 pnpm dev:api                 # Terminal 1: API on port 5001
 pnpm dev:worker              # Terminal 2: Worker service
 cd apps/ai-service && python src/main.py  # Terminal 3: AI service
 
-# Local RabbitMQ (required):
-docker run -d --name rabbitmq -p 5672:5672 -p 15672:15672 rabbitmq:3-management
+# Database
+pnpm --filter api db:studio  # Open Prisma Studio UI at http://localhost:5555
+```
+
+## Caching with Redis
+
+### Development
+
+Redis is **optional** in development. Without it, caching is disabled (graceful fallback).
+
+```bash
+# Start Redis (via docker-compose or manually)
+redis-cli ping
+# Output: PONG
+
+# Test cache
+curl http://localhost:5001/api/v1/company/AAPL
+# Second request hits Redis cache (faster)
+```
+
+### Production (Railway)
+
+Redis is **auto-configured** in Railway:
+
+1. Add Redis plugin to your Railway project
+2. Railway generates `REDIS_URL` automatically
+3. API uses it immediately (no code changes needed)
+
+See [docs/RAILWAY_REDIS_SETUP.md](docs/RAILWAY_REDIS_SETUP.md) for full guide.
+
+### Using Cache in Services
+
+```typescript
+// apps/api/src/services/companyService.ts
+export const companyService = {
+  async getCompanyByTicker(ticker: string) {
+    return cacheService.getOrSet(
+      `company:${ticker}`,
+      async () => {
+        return prisma.company.findUnique({ where: { ticker } });
+      },
+      3600 // Cache 1 hour
+    );
+  },
+
+  async updateCompany(ticker: string, data: any) {
+    const result = await prisma.company.update({
+      where: { ticker },
+      data,
+    });
+
+    // Invalidate cache after write
+    await cacheService.invalidate(`company:${ticker}`);
+
+    return result;
+  },
+};
+```
+
+See [apps/api/src/services/companyService.ts](apps/api/src/services/companyService.ts) for complete example.
+
+### Cache Service API
+
+```typescript
+import { cacheService } from './services/cacheService.js';
+
+// Get value
+const value = await cacheService.get<T>(key);
+
+// Set value
+await cacheService.set(key, value, 3600); // 1 hour TTL
+
+// Get-or-set (recommended)
+const value = await cacheService.getOrSet(key, fetchFn, 3600);
+
+// Invalidate single key
+await cacheService.invalidate(key);
+
+// Invalidate by pattern
+await cacheService.invalidatePattern('company:*');
+
+// Clear all
+await cacheService.clear();
+```
+
+### Cache Key Naming
+
+Use hierarchical, consistent naming:
+
+```typescript
+// Format: type:identifier:variant
+`company:${ticker}:info``fundamentals:${companyId}:${period}``screener:${userId}:results`;
 ```
 
 ## Postman Collection
@@ -598,3 +772,710 @@ Components are customized to work with the Morpho theme system.
 - **Kubernetes**: Local dev uses k3d, not Docker Desktop Kubernetes
 - **Routes Consolidated**: Football endpoints unified under `/football/` (removed `/football-data/` and `/football-scraper/` duplicates)
 - **YouTube API**: Required `YOUTUBE_API_KEY` environment variable for highlight search
+
+---
+
+## Node.js Development Best Practices
+
+### Code Style & Standards
+
+**TypeScript Guidelines:**
+
+```typescript
+// ✅ GOOD: Explicit types, proper imports
+import type { Request, Response } from 'express';
+import { z } from 'zod';
+
+export const myHandler = asyncHandler(async (req: Request, res: Response) => {
+  const schema = z.object({ id: z.string().uuid() });
+  const { id } = schema.parse(req.params);
+
+  const result = await myService.getData(id);
+  res.json({ data: result });
+});
+
+// ❌ BAD: Missing types, no validation
+export const myHandler = async (req, res) => {
+  const result = await myService.getData(req.params.id);
+  res.json(result);
+};
+```
+
+**Async/Await Best Practices:**
+
+```typescript
+// ✅ GOOD: Proper error handling, specific errors
+try {
+  const data = await externalApi.fetch(id);
+  if (!data) {
+    throw new ApiError('Resource not found', {
+      statusCode: 404,
+      code: 'NOT_FOUND',
+    });
+  }
+  return data;
+} catch (error) {
+  if (error instanceof ApiError) throw error;
+  logger.error({ error, id }, 'Failed to fetch data');
+  throw new ApiError('Service unavailable', {
+    statusCode: 503,
+    code: 'SERVICE_ERROR',
+  });
+}
+
+// ❌ BAD: Silent failures, generic errors
+try {
+  return await externalApi.fetch(id);
+} catch (error) {
+  return null; // Lost error context!
+}
+```
+
+**Promise Handling:**
+
+```typescript
+// ✅ GOOD: Promise.all for parallel operations
+const [matches, teams, standings] = await Promise.all([
+  footballService.getMatches(leagueId),
+  footballService.getTeams(leagueId),
+  footballService.getStandings(leagueId),
+]);
+
+// ❌ BAD: Sequential awaits (slow!)
+const matches = await footballService.getMatches(leagueId);
+const teams = await footballService.getTeams(leagueId);
+const standings = await footballService.getStandings(leagueId);
+```
+
+### Input Validation (Zod)
+
+**Always validate at the controller layer:**
+
+```typescript
+import { z } from 'zod';
+
+const createVideoSchema = z.object({
+  title: z.string().min(1).max(200),
+  url: z.string().url(),
+  duration: z.number().positive().optional(),
+  tags: z.array(z.string()).max(10).optional(),
+});
+
+export const createVideo = asyncHandler(async (req: Request, res: Response) => {
+  const validatedData = createVideoSchema.parse(req.body); // Throws on invalid
+  const video = await videoService.create(validatedData);
+  res.status(201).json({ data: video });
+});
+```
+
+**Query Parameter Validation:**
+
+```typescript
+const querySchema = z.object({
+  league: z.coerce.number().int().positive(),
+  limit: z.coerce.number().int().min(1).max(100).default(20),
+  page: z.coerce.number().int().min(1).default(1),
+});
+
+// Usage:
+const { league, limit, page } = querySchema.parse(req.query);
+```
+
+### Error Handling Patterns
+
+**Service Layer Errors:**
+
+```typescript
+// footballService.ts
+export const footballService = {
+  async getMatches(leagueId: number) {
+    try {
+      const response = await fotmobApi.get(`/matches/${leagueId}`);
+      return response.data;
+    } catch (error) {
+      if (axios.isAxiosError(error)) {
+        if (error.response?.status === 404) {
+          throw new ApiError(`League ${leagueId} not found`, {
+            statusCode: 404,
+            code: 'LEAGUE_NOT_FOUND',
+          });
+        }
+        if (error.response?.status === 429) {
+          throw new ApiError('Rate limit exceeded', {
+            statusCode: 503,
+            code: 'RATE_LIMITED',
+          });
+        }
+      }
+      logger.error({ error, leagueId }, 'FotMob API error');
+      throw new ApiError('Failed to fetch matches', {
+        statusCode: 502,
+        code: 'UPSTREAM_ERROR',
+      });
+    }
+  },
+};
+```
+
+**Controller Error Handling:**
+
+```typescript
+// asyncHandler already catches errors, but you can add specific handling:
+export const getLeagueData = asyncHandler(
+  async (req: Request, res: Response) => {
+    const { league } = querySchema.parse(req.query);
+
+    try {
+      const data = await footballService.getMatches(league);
+      res.json({ data });
+    } catch (error) {
+      if (error instanceof ApiError && error.statusCode === 404) {
+        // Add custom logging or side effects
+        logger.warn({ league }, 'User requested non-existent league');
+      }
+      throw error; // Re-throw for error middleware
+    }
+  }
+);
+```
+
+### Logging Best Practices
+
+**Structured Logging with Context:**
+
+```typescript
+import { logger } from '../../logger.js';
+
+// ✅ GOOD: Structured logs with context
+logger.info(
+  { userId, action: 'video_upload', videoId },
+  'Video uploaded successfully'
+);
+logger.error({ error, matchId, leagueId }, 'Failed to fetch match data');
+logger.warn({ requestId, duration: 5000 }, 'Slow API response');
+
+// ❌ BAD: String concatenation, lost context
+logger.info('Video uploaded by user ' + userId);
+logger.error('Error: ' + error.message);
+```
+
+**Performance Logging:**
+
+```typescript
+export const myExpensiveOperation = asyncHandler(
+  async (req: Request, res: Response) => {
+    const start = Date.now();
+    const requestId = req.id; // From requestId middleware
+
+    try {
+      const result = await expensiveService.doWork();
+      const duration = Date.now() - start;
+
+      logger.info(
+        { requestId, duration, resultCount: result.length },
+        'Operation completed'
+      );
+      res.json({ data: result });
+    } catch (error) {
+      const duration = Date.now() - start;
+      logger.error({ requestId, duration, error }, 'Operation failed');
+      throw error;
+    }
+  }
+);
+```
+
+### Database Patterns (Prisma)
+
+**Service → Repository Pattern:**
+
+```typescript
+// myFeature.repo.ts - Database access layer
+import { prisma } from '../../lib/prisma.js';
+
+export const myFeatureRepo = {
+  async findById(id: string) {
+    return prisma.myModel.findUnique({ where: { id } });
+  },
+
+  async create(data: CreateMyModelInput) {
+    return prisma.myModel.create({ data });
+  },
+
+  async update(id: string, data: UpdateMyModelInput) {
+    return prisma.myModel.update({ where: { id }, data });
+  },
+};
+
+// myFeature.service.ts - Business logic layer
+export const myFeatureService = {
+  async getData(id: string) {
+    const data = await myFeatureRepo.findById(id);
+    if (!data) {
+      throw new ApiError('Not found', { statusCode: 404, code: 'NOT_FOUND' });
+    }
+    return data;
+  },
+};
+```
+
+**Transaction Patterns:**
+
+```typescript
+export const myFeatureService = {
+  async createWithRelations(data: ComplexInput) {
+    return prisma.$transaction(async (tx) => {
+      const parent = await tx.parent.create({ data: data.parent });
+      const children = await tx.child.createMany({
+        data: data.children.map((c) => ({ ...c, parentId: parent.id })),
+      });
+      return { parent, children };
+    });
+  },
+};
+```
+
+### API Response Patterns
+
+**Consistent Response Format:**
+
+```typescript
+// ✅ GOOD: Consistent structure
+res.json({
+  data: result,
+  meta: { page: 1, total: 100, limit: 20 },
+});
+
+// For errors (handled by error middleware):
+throw new ApiError('Message', {
+  statusCode: 400,
+  code: 'ERROR_CODE',
+  details: { field: 'email', reason: 'invalid_format' },
+});
+
+// ❌ BAD: Inconsistent shapes
+res.json(result); // Direct data
+res.json({ result }); // Different key
+res.json({ success: true, data: result }); // Unnecessary fields
+```
+
+**Status Codes:**
+
+- `200 OK`: Successful GET/PUT/PATCH
+- `201 Created`: Successful POST
+- `204 No Content`: Successful DELETE
+- `400 Bad Request`: Validation errors
+- `401 Unauthorized`: Missing/invalid auth
+- `403 Forbidden`: Valid auth, insufficient permissions
+- `404 Not Found`: Resource doesn't exist
+- `409 Conflict`: Resource already exists
+- `422 Unprocessable Entity`: Business logic validation failed
+- `500 Internal Server Error`: Unexpected server error
+- `502 Bad Gateway`: Upstream service error
+- `503 Service Unavailable`: Service temporarily unavailable
+
+### Environment Variables
+
+**Always validate in env.ts:**
+
+```typescript
+// env.ts
+import { z } from 'zod';
+
+const envSchema = z.object({
+  PORT: z.coerce.number().default(5001),
+  DATABASE_URL: z.string().url(),
+  JWT_SECRET: z.string().min(32),
+  YOUTUBE_API_KEY: z.string().optional(),
+  RABBIT_URL: z.string().url().optional(),
+  NODE_ENV: z
+    .enum(['development', 'production', 'test'])
+    .default('development'),
+});
+
+export const env = envSchema.parse(process.env);
+```
+
+**Usage in Services:**
+
+```typescript
+import { env } from '../../env.js';
+
+// ✅ GOOD: Type-safe access
+const apiKey = env.YOUTUBE_API_KEY;
+if (!apiKey) {
+  logger.warn('YouTube API key not configured');
+  return null;
+}
+
+// ❌ BAD: Direct process.env access
+const apiKey = process.env.YOUTUBE_API_KEY; // Not validated!
+```
+
+---
+
+## Debugging & Troubleshooting
+
+### Common Issues & Solutions
+
+**Issue: Import path errors (Cannot find module)**
+
+```typescript
+// ❌ Wrong: Missing .js extension
+import { foo } from './file';
+
+// ✅ Correct: Include .js even for .ts files
+import { foo } from './file.js';
+```
+
+**Issue: Circular dependencies**
+
+```bash
+# Symptom: undefined exports, "X is not a function"
+# Solution: Extract shared types to separate file
+# types.ts → service.ts ← controller.ts
+#             ↓
+#          repo.ts
+```
+
+**Issue: Database connection errors**
+
+```bash
+# Check DATABASE_URL format:
+postgresql://user:pass@host:5432/dbname?schema=public
+
+# Test connection:
+pnpm --filter api exec prisma db push
+pnpm --filter api exec prisma studio
+```
+
+**Issue: RabbitMQ connection failures**
+
+```typescript
+// Services should gracefully handle missing RabbitMQ:
+try {
+  await producer.sendMessage('queue.name', data);
+} catch (error) {
+  logger.warn({ error }, 'RabbitMQ unavailable, skipping message');
+  // Continue without messaging
+}
+```
+
+**Issue: TypeScript errors in production build**
+
+```bash
+# Run type check before deploying:
+pnpm --filter api typecheck
+
+# Common fixes:
+- Add missing .js extensions to imports
+- Fix "type": "module" in package.json
+- Update tsconfig.json "module": "ESNext"
+```
+
+### Debugging Workflows
+
+**Debug API Endpoint:**
+
+1. Check logs with `pnpm dev:api` output
+2. Test with curl/Postman:
+   ```bash
+   curl -X GET "http://localhost:5001/api/v1/football/highlights?league=47"
+   ```
+3. Add debug logs:
+   ```typescript
+   logger.debug({ req: req.body, params: req.params }, 'Handler called');
+   ```
+4. Check error middleware output for stack traces
+
+**Debug RabbitMQ Messages:**
+
+1. Open RabbitMQ management: http://localhost:15672 (guest/guest)
+2. Check queue depths, message rates
+3. Add message logging:
+   ```typescript
+   consumer.on('message', (msg) => {
+     logger.debug({ msg }, 'Received message');
+   });
+   ```
+
+**Debug Database Queries:**
+
+```bash
+# Enable Prisma query logging:
+export DEBUG="prisma:query"
+pnpm dev:api
+
+# Or use Prisma Studio:
+pnpm --filter api db:studio
+```
+
+**Performance Profiling:**
+
+```typescript
+// Add timing middleware:
+app.use((req, res, next) => {
+  const start = Date.now();
+  res.on('finish', () => {
+    const duration = Date.now() - start;
+    logger.info({
+      method: req.method,
+      url: req.url,
+      status: res.statusCode,
+      duration,
+    });
+  });
+  next();
+});
+```
+
+---
+
+## Testing Strategy
+
+### Unit Testing (Vitest)
+
+**Service Tests:**
+
+```typescript
+import { describe, it, expect, vi } from 'vitest';
+import { footballService } from './football.service.js';
+
+describe('footballService', () => {
+  it('should fetch matches for valid league', async () => {
+    const matches = await footballService.getMatches(47);
+    expect(matches).toBeInstanceOf(Array);
+    expect(matches.length).toBeGreaterThan(0);
+  });
+
+  it('should throw ApiError for invalid league', async () => {
+    await expect(footballService.getMatches(99999)).rejects.toThrow('League');
+  });
+});
+```
+
+**Controller Tests (with mocks):**
+
+```typescript
+import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { Request, Response } from 'express';
+import { getMatches } from './football.controller.js';
+
+describe('footballController', () => {
+  let req: Partial<Request>;
+  let res: Partial<Response>;
+
+  beforeEach(() => {
+    req = { query: { league: '47' } };
+    res = {
+      json: vi.fn(),
+      status: vi.fn().mockReturnThis(),
+    };
+  });
+
+  it('should return matches with valid league', async () => {
+    await getMatches(req as Request, res as Response);
+    expect(res.json).toHaveBeenCalledWith(
+      expect.objectContaining({ data: expect.any(Array) })
+    );
+  });
+});
+```
+
+### Integration Testing
+
+**API Endpoint Tests:**
+
+```typescript
+import { describe, it, expect } from 'vitest';
+import supertest from 'supertest';
+import { app } from '../index.js';
+
+const request = supertest(app);
+
+describe('GET /api/v1/football/highlights', () => {
+  it('should return highlights for Premier League', async () => {
+    const response = await request
+      .get('/api/v1/football/highlights')
+      .query({ league: 47 });
+
+    expect(response.status).toBe(200);
+    expect(response.body.data).toBeInstanceOf(Array);
+  });
+
+  it('should require league parameter', async () => {
+    const response = await request.get('/api/v1/football/highlights');
+    expect(response.status).toBe(400);
+  });
+});
+```
+
+---
+
+## Security Best Practices
+
+### Authentication & Authorization
+
+**JWT Middleware Pattern:**
+
+```typescript
+// middleware/auth.ts
+export const requireAuth = asyncHandler(
+  async (req: Request, res: Response, next) => {
+    const token = req.headers.authorization?.replace('Bearer ', '');
+    if (!token) {
+      throw new ApiError('Unauthorized', { statusCode: 401, code: 'NO_TOKEN' });
+    }
+
+    try {
+      const decoded = jwt.verify(token, env.JWT_SECRET);
+      req.user = decoded; // Attach to request
+      next();
+    } catch (error) {
+      throw new ApiError('Invalid token', {
+        statusCode: 401,
+        code: 'INVALID_TOKEN',
+      });
+    }
+  }
+);
+
+// Usage in routes:
+router.get('/protected', requireAuth, myHandler);
+```
+
+### Input Sanitization
+
+**Prevent SQL Injection (Prisma handles this):**
+
+```typescript
+// ✅ SAFE: Prisma parameterizes queries
+const user = await prisma.user.findFirst({
+  where: { email: req.body.email }, // Automatically sanitized
+});
+
+// ❌ DANGEROUS: Raw SQL without parameters
+const user = await prisma.$queryRawUnsafe(
+  `SELECT * FROM users WHERE email = '${req.body.email}'` // SQL injection!
+);
+
+// ✅ SAFE: Parameterized raw query
+const user = await prisma.$queryRaw`
+  SELECT * FROM users WHERE email = ${req.body.email}
+`;
+```
+
+**Prevent XSS:**
+
+```typescript
+import { z } from 'zod';
+
+// Validate and sanitize strings:
+const userInputSchema = z.object({
+  name: z
+    .string()
+    .max(100)
+    .regex(/^[a-zA-Z0-9\s-]+$/),
+  bio: z.string().max(500),
+});
+```
+
+### Rate Limiting
+
+```typescript
+import rateLimit from 'express-rate-limit';
+
+const limiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 100, // Limit each IP to 100 requests per window
+  message: 'Too many requests',
+});
+
+app.use('/api/', limiter);
+```
+
+---
+
+## Performance Optimization
+
+### Database Query Optimization
+
+**Use select to limit fields:**
+
+```typescript
+// ✅ GOOD: Only fetch needed fields
+const users = await prisma.user.findMany({
+  select: { id: true, name: true, email: true },
+});
+
+// ❌ BAD: Fetches all fields
+const users = await prisma.user.findMany();
+```
+
+**Batch Queries:**
+
+```typescript
+// ✅ GOOD: Single query with in clause
+const videos = await prisma.video.findMany({
+  where: { id: { in: videoIds } },
+});
+
+// ❌ BAD: Multiple queries
+const videos = await Promise.all(
+  videoIds.map((id) => prisma.video.findUnique({ where: { id } }))
+);
+```
+
+### Caching Strategies
+
+```typescript
+import NodeCache from 'node-cache';
+
+const cache = new NodeCache({ stdTTL: 600 }); // 10 minutes
+
+export const myService = {
+  async getExpensiveData(key: string) {
+    const cached = cache.get(key);
+    if (cached) {
+      logger.debug({ key }, 'Cache hit');
+      return cached;
+    }
+
+    const data = await expensiveOperation();
+    cache.set(key, data);
+    return data;
+  },
+};
+```
+
+---
+
+## Deployment Checklist
+
+**Before Deploying:**
+
+- [ ] Run `pnpm build` successfully
+- [ ] All tests passing (`pnpm test`)
+- [ ] TypeScript checks pass (`pnpm typecheck`)
+- [ ] Environment variables configured in Railway/k8s
+- [ ] Database migrations applied (`pnpm db:migrate:deploy`)
+- [ ] Health endpoints responding (`/health/live`, `/health/ready`)
+- [ ] Check logs for errors in staging
+- [ ] RabbitMQ connection verified (if used)
+- [ ] Storage (GCS) credentials configured
+- [ ] API keys validated (YouTube, FotMob)
+
+**Post-Deploy Verification:**
+
+```bash
+# Health check:
+curl https://your-api.railway.app/health/live
+
+# Test key endpoint:
+curl https://your-api.railway.app/api/v1/football/highlights?league=47
+
+# Check logs:
+railway logs --service api
+```
+
+---

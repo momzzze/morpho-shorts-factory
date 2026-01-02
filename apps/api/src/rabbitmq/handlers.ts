@@ -29,6 +29,87 @@ export interface ThumbnailMessage {
   createdAt: string;
 }
 
+export interface StocksSyncMessage {
+  jobId: string;
+  companyId: string;
+  ticker: string;
+  cik: string;
+}
+
+/**
+ * Handle stocks sync messages
+ */
+export async function handleStocksSyncMessage(
+  message: StocksSyncMessage
+): Promise<void> {
+  logger.info(
+    { jobId: message.jobId, ticker: message.ticker },
+    '📈 Processing stocks sync job'
+  );
+
+  try {
+    const { secAdapter } = await import('../adapters/secAdapter.js');
+    const { stocksRepo } = await import('../modules/stocks/stocks.repo.js');
+
+    // Update job status to processing
+    await stocksRepo.updateJobRun(message.jobId, { status: 'running' });
+
+    // Fetch SEC data
+    logger.info(
+      { cik: message.cik, ticker: message.ticker },
+      'Fetching SEC company facts'
+    );
+    const facts = await secAdapter.getCompanyFacts(message.cik, false);
+
+    if (!facts) {
+      throw new Error('Failed to fetch SEC company facts');
+    }
+
+    // Parse fundamentals
+    const fundamentals = secAdapter.parseFundamentals(facts);
+    logger.info(
+      { ticker: message.ticker, count: fundamentals.length },
+      'Parsed SEC fundamentals'
+    );
+
+    // Upsert to database
+    let upsertCount = 0;
+    for (const fund of fundamentals) {
+      await stocksRepo.upsertFundamentals({
+        companyId: message.companyId,
+        periodType: fund.periodType,
+        periodEnd: fund.periodEnd,
+        revenue: fund.revenue || undefined,
+        netIncome: fund.netIncome || undefined,
+        assets: fund.assets || undefined,
+        liabilities: fund.liabilities || undefined,
+        equity: fund.equity || undefined,
+        cfo: fund.cfo || undefined,
+      });
+      upsertCount++;
+    }
+
+    // Update job status to completed
+    await stocksRepo.updateJobRun(message.jobId, { status: 'success' });
+
+    logger.info(
+      { jobId: message.jobId, ticker: message.ticker, upserted: upsertCount },
+      '✅ Stocks sync completed'
+    );
+  } catch (error) {
+    logger.error({ error, jobId: message.jobId }, '❌ Stocks sync failed');
+
+    // Update job status to failed
+    const { stocksRepo } = await import('../modules/stocks/stocks.repo.js');
+    await stocksRepo.updateJobRun(message.jobId, {
+      status: 'failed',
+      error: error instanceof Error ? error.message : 'Unknown error',
+    });
+
+    throw error;
+  }
+}
+
 /**
  * Handle task messages from RabbitMQ
  */

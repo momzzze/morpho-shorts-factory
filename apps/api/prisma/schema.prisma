@@ -117,3 +117,71 @@ enum VideoStatus {
   COMPLETED
   FAILED
 }
+
+// ==============================================================================
+// Company & Fundamentals Models (for SEC data & stock screener)
+// ==============================================================================
+
+model Company {
+  id          String   @id @default(cuid())
+  ticker      String   @unique
+  cik         String   @unique
+  name        String?
+  sic         String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  fundamentals FundamentalsSnapshot[]
+
+  @@index([ticker])
+  @@index([cik])
+  @@map("companies")
+}
+
+model FundamentalsSnapshot {
+  id           String   @id @default(cuid())
+  companyId    String
+  company      Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  periodType   String   // "annual" | "ttm" | "quarter"
+  periodEnd    DateTime
+  currency     String?  // usually USD
+
+  revenue      Float?
+  netIncome    Float?
+  epsDiluted   Float?
+  shares       Float?
+
+  assets       Float?
+  liabilities  Float?
+  equity       Float?
+
+  cfo          Float?   // cash from operations
+  capex        Float?
+  fcf          Float?   // computed: cfo - capex
+
+  source       String   // "SEC"
+  sourceMeta   Json?    // tags used, form type, etc.
+
+  createdAt    DateTime @default(now())
+
+  @@unique([companyId, periodType, periodEnd])
+  @@index([companyId, periodType, periodEnd])
+  @@index([periodEnd])
+  @@map("fundamentals_snapshots")
+}
+
+model JobRun {
+  id         String   @id @default(cuid())
+  jobType    String   // "SEC_SYNC_COMPANY"
+  key        String   // ticker or companyId
+  status     String   // "queued" | "running" | "success" | "failed"
+  error      String?
+  startedAt  DateTime?
+  endedAt    DateTime?
+  createdAt  DateTime @default(now())
+
+  @@index([jobType, status])
+  @@index([key, jobType])
+  @@map("job_runs")
+}

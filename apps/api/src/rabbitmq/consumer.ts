@@ -13,7 +13,9 @@ export type MessageHandler = (message: any) => Promise<void>;
 
 export class RabbitMQConsumer {
   private connection: Awaited<ReturnType<typeof amqplib.connect>> | null = null;
-  private channel: Awaited<ReturnType<Awaited<ReturnType<typeof amqplib.connect>>['createChannel']>> | null = null;
+  private channel: Awaited<
+    ReturnType<Awaited<ReturnType<typeof amqplib.connect>>['createChannel']>
+  > | null = null;
   private readonly config: Required<RabbitMQConfig>;
 
   constructor(config: RabbitMQConfig) {
@@ -69,14 +71,18 @@ export class RabbitMQConsumer {
 
       try {
         const message = JSON.parse(msg.content.toString());
-        console.log(`📨 Received message from ${routingKey}`);
+        console.log(`📨 Received message from ${routingKey}:`, {
+          routingKey,
+          queueName,
+          messageType: message.type || 'unknown',
+        });
 
         await handler(message);
 
         this.channel!.ack(msg);
-        console.log(`✅ Message processed`);
+        console.log(`✅ Message processed from ${routingKey}`);
       } catch (error) {
-        console.error(`❌ Error processing message:`, error);
+        console.error(`❌ Error processing message from ${routingKey}:`, error);
         this.channel!.nack(msg, false, false);
       }
     });
