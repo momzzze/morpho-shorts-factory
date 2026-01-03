@@ -1,2 +1,4 @@
 packages:
-  - 'apps/*'
+  - 'apps/api'
+  - 'apps/web'
+  - 'apps/ai-service'
