@@ -1,8 +1,18 @@
 import { useEffect, useRef, useState } from 'react';
-import { Moon, Sun, Palette, Check } from 'lucide-react';
+import {
+  Moon,
+  Sun,
+  Palette,
+  Check,
+  LogIn,
+  UserPlus,
+  LogOut,
+  User,
+} from 'lucide-react';
 import { useTheme, type ThemeName } from '../theme';
 import { RadioIndicator } from './RadioIndicator';
-import { Link, useRouterState } from '@tanstack/react-router';
+import { Link, useNavigate, useRouterState } from '@tanstack/react-router';
+import { useAppStore } from '@/app/store';
 
 const allThemes: ThemeName[] = [
   'synth',
@@ -59,7 +69,8 @@ export function Sidebar({
   onClose: () => void;
 }) {
   const { tokens, mode, toggleMode, theme, setTheme } = useTheme();
-
+  const { token, user, logout } = useAppStore();
+  const navigate = useNavigate();
   // theme dropdown state
   const [themeOpen, setThemeOpen] = useState(false);
   const themeRef = useRef<HTMLDivElement>(null);
@@ -71,9 +82,12 @@ export function Sidebar({
 
   return (
     <>
-      {/* Overlay - visible when sidebar is open */}
+      {/* Overlay - only on mobile when sidebar is open */}
       {isOpen && (
-        <div className="fixed inset-0 bg-black/50 z-30" onClick={onClose} />
+        <div
+          className="fixed inset-0 bg-black/50 z-30 lg:hidden"
+          onClick={onClose}
+        />
       )}
 
       <aside
@@ -81,24 +95,26 @@ export function Sidebar({
           backgroundColor: tokens.surface,
           borderRight: `1px solid ${tokens.border}`,
           color: tokens.fg,
-          transform: isOpen ? 'translateX(0)' : 'translateX(-100%)',
         }}
         className={[
-          'fixed left-0 top-0 z-40 h-screen w-72',
+          // Mobile: off-canvas, full height
+          'fixed left-0 top-0 z-40 w-72 overflow-hidden h-screen',
           'transition-transform duration-300',
           isOpen ? 'translate-x-0' : '-translate-x-full',
-          'lg:translate-x-0 lg:static',
+
+          // Desktop: respect isOpen state too
+          'lg:static lg:h-full',
           'lg:border-r',
         ].join(' ')}
       >
         <div className="h-full flex flex-col">
           {/* Top: Brand */}
           <div
-            className="h-16 shrink-0 px-6 flex items-center border-b lg:hidden"
+            className="h-12 shrink-0 px-4 flex items-center border-b"
             style={{ borderColor: tokens.border }}
           >
             <div
-              className="text-lg font-semibold"
+              className="text-base font-semibold"
               style={{ color: tokens.primary }}
             >
               Morpho
@@ -106,7 +122,7 @@ export function Sidebar({
           </div>
 
           {/* Middle: ONLY this scrolls */}
-          <nav className="flex-1 overflow-y-auto px-4 py-4 space-y-1">
+          <nav className="flex-1 overflow-y-auto no-scrollbar px-3 py-3 space-y-1.5">
             {navItems.map((item) => {
               const active =
                 pathname === item.to || pathname.startsWith(item.to + '/');
@@ -119,7 +135,7 @@ export function Sidebar({
                     onClose();
                   }}
                   className={[
-                    'block rounded-xl px-3 py-2 text-sm font-medium transition',
+                    'block rounded-lg px-3 py-2 text-sm font-medium transition',
                     'hover:opacity-90',
                   ].join(' ')}
                   style={{
@@ -135,9 +151,83 @@ export function Sidebar({
             })}
           </nav>
 
-          {/* Bottom: Utilities (Theme + Mode now; later user/logout) */}
-          <div className="p-4 border-t" style={{ borderColor: tokens.border }}>
-            <div className="text-xs font-semibold uppercase opacity-60 mb-3">
+          {/* Bottom: User / Auth + Appearance */}
+          <div
+            className="p-3 border-t space-y-2 sticky bottom-0"
+            style={{
+              borderColor: tokens.border,
+              backgroundColor: tokens.surface,
+            }}
+          >
+            <div className="text-[11px] font-semibold uppercase opacity-60">
+              Account
+            </div>
+
+            {/* Auth buttons when logged out */}
+            {!token && (
+              <div className="flex gap-2">
+                <Link
+                  to="/auth/login"
+                  onClick={onClose}
+                  className="flex-1 inline-flex items-center justify-center gap-2 rounded-lg border px-3 py-2 text-[13px] font-semibold"
+                  style={{
+                    borderColor: tokens.border,
+                    color: tokens.fg,
+                    backgroundColor: tokens.surface,
+                  }}
+                >
+                  <LogIn className="h-4 w-4" /> Login
+                </Link>
+                <Link
+                  to="/auth/register"
+                  onClick={onClose}
+                  className="flex-1 inline-flex items-center justify-center gap-2 rounded-lg px-3 py-2 text-[13px] font-semibold"
+                  style={{ backgroundColor: tokens.primary, color: tokens.bg }}
+                >
+                  <UserPlus className="h-4 w-4" /> Register
+                </Link>
+              </div>
+            )}
+
+            {/* User info + logout when authed */}
+            {token && (
+              <div
+                className="flex items-center gap-3 rounded-lg border px-3 py-2"
+                style={{
+                  borderColor: tokens.border,
+                  backgroundColor: tokens.surface,
+                }}
+              >
+                <div
+                  className="h-9 w-9 rounded-full bg-black/10 flex items-center justify-center"
+                  style={{ color: tokens.primary }}
+                >
+                  <User className="h-4 w-4" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="text-sm font-semibold truncate">
+                    {user?.name || user?.email || 'User'}
+                  </div>
+                  <div className="text-xs opacity-70 truncate">
+                    {user?.email || 'Logged in'}
+                  </div>
+                </div>
+                <button
+                  onClick={() => {
+                    logout();
+                    onClose();
+                    navigate({ to: '/home', replace: true });
+                  }}
+                  className="inline-flex items-center gap-1 text-[13px] font-semibold"
+                  style={{ color: tokens.primary }}
+                >
+                  <LogOut className="h-4 w-4" />
+                  Logout
+                </button>
+              </div>
+            )}
+
+            <div className="text-[11px] font-semibold uppercase opacity-60 mb-2">
               Appearance
             </div>
 
@@ -153,8 +243,8 @@ export function Sidebar({
                   }}
                   className="
                     w-full inline-flex items-center justify-between
-                    h-10 rounded-xl border px-3
-                    text-sm font-medium shadow-sm transition
+                    h-9 rounded-lg border px-3
+                    text-[13px] font-medium shadow-sm transition
                     hover:opacity-90 active:scale-[0.99]
                     focus:outline-none
                   "
@@ -199,7 +289,7 @@ export function Sidebar({
                             }}
                             className="
                               w-full flex items-center justify-between
-                              px-3 py-2 text-sm capitalize
+                              px-3 py-2 text-[13px] capitalize
                               hover:opacity-80 transition
                             "
                           >
@@ -231,8 +321,8 @@ export function Sidebar({
                   color: tokens.fg,
                 }}
                 className="
-                  inline-flex h-10 w-10 items-center justify-center
-                  rounded-xl border shadow-sm transition
+                  inline-flex h-9 w-9 items-center justify-center
+                  rounded-lg border shadow-sm transition
                   hover:opacity-90 active:scale-[0.98]
                   focus:outline-none
                 "
@@ -254,6 +344,10 @@ export function Sidebar({
           </div>
         </div>
       </aside>
+      {/* Overlay - visible when sidebar is open */}
+      {isOpen && (
+        <div className="fixed inset-0 bg-black/50 z-30" onClick={onClose} />
+      )}
     </>
   );
 }
