@@ -1,6 +1,7 @@
 import express from 'express';
 import cors from 'cors';
 
+// Morpho Shorts Factory API - Cleaned up workspace (worker removed)
 import { env } from './env.js';
 import router from './routes/index.js';
 import { httpLogger } from './httpLogger.js';
