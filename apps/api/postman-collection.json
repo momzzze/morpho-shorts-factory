@@ -5,18 +5,7 @@
         "description": "Simplified Morpho API: Just 2 stock endpoints + Football + Auth + Health",
         "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
     },
-    "variable": [
-        {
-            "key": "baseUrl",
-            "value": "http://localhost:5001",
-            "type": "string"
-        },
-        {
-            "key": "authToken",
-            "value": "",
-            "type": "string"
-        }
-    ],
+    "variable": [],
     "item": [
         {
             "name": "Stocks Module - WITH DATABASE",
